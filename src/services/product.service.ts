@@ -6,7 +6,7 @@ import { Prisma } from "@prisma/client";
 // Cache helpers
 const CACHE_PREFIX = "products:";
 
-async function clearProductCache() {
+export async function clearProductCache() {
   try {
     let cursor = "0";
     let allKeys: string[] = [];

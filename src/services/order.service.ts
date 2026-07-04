@@ -1,0 +1,77 @@
+import { prisma } from "@/lib/prisma";
+import * as orderRepository from "@/repositories/order.repository";
+import { clearProductCache } from "@/services/product.service";
+import { AppError } from "@/utils/response";
+
+export async function createOrder(
+  userId: string,
+  items: { productId: string; quantity: number }[]
+) {
+  const result = await prisma.$transaction(async (tx) => {
+    let totalAmount = 0;
+    const preparedItems = [];
+
+    // Group items by productId to avoid fetching the same product multiple times and simplify validation
+    const itemMap = new Map<string, number>();
+    for (const item of items) {
+      const currentQty = itemMap.get(item.productId) || 0;
+      itemMap.set(item.productId, currentQty + item.quantity);
+    }
+
+    for (const [productId, quantity] of itemMap.entries()) {
+      // 1. Fetch product to ensure existence, price check, and non-deleted state
+      const product = await tx.product.findUnique({
+        where: { id: productId },
+      });
+
+      if (!product || product.deletedAt !== null) {
+        throw new AppError(`Product not found`, 404);
+      }
+
+      // 2. Perform atomic decrement
+      const updatedProduct = await tx.product.update({
+        where: { id: productId },
+        data: {
+          stock: {
+            decrement: quantity,
+          },
+        },
+      });
+
+      // 3. Verify stock wasn't overdrawn
+      if (updatedProduct.stock < 0) {
+        throw new AppError(
+          `Insufficient stock for product "${product.name}". Requested: ${quantity}, available: ${product.stock}`,
+          400
+        );
+      }
+
+      const priceAtPurchase = product.price;
+      totalAmount += priceAtPurchase * quantity;
+
+      preparedItems.push({
+        productId,
+        quantity,
+        priceAtPurchase,
+      });
+    }
+
+    // 4. Create the order and items in db
+    const order = await orderRepository.createOrder(tx, {
+      userId,
+      totalAmount,
+      items: preparedItems,
+    });
+
+    return order;
+  });
+
+  // Invalidate cache after successful transaction commit
+  await clearProductCache();
+
+  return result;
+}
+
+export async function getUserOrders(userId: string) {
+  return orderRepository.findOrdersByUserId(userId);
+}
