@@ -3,6 +3,7 @@ import { createOrderSchema } from "@/validations/order.validation";
 import * as orderService from "@/services/order.service";
 import { AppError, sendResponse } from "@/utils/response";
 import { z } from "zod";
+import { logger } from "@/utils/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.error("POST Order error:", error);
+    logger.error({ error }, "Unhandled POST Order Error");
     return sendResponse(
       {
         success: false,
@@ -107,7 +108,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.error("GET Orders error:", error);
+    logger.error({ error }, "Unhandled GET Orders Error");
     return sendResponse(
       {
         success: false,
