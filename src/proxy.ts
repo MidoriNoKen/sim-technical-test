@@ -26,7 +26,9 @@ function setSecurityHeaders(response: NextResponse): void {
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set(
     "Content-Security-Policy",
-    "default-src 'none'; frame-ancestors 'none'; base-uri 'self'"
+    isProduction
+      ? "default-src 'none'; frame-ancestors 'none'; base-uri 'self'"
+      : "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'"
   );
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   response.headers.set("Strict-Transport-Security", isProduction ? "max-age=31536000; includeSubDomains" : "max-age=0");
@@ -83,11 +85,12 @@ export async function proxy(request: NextRequest) {
     logger.error({ error, ip }, "Rate limiter check failed (fail-open)");
   }
 
-  // Intercept requests to protected routes (e.g., /api/orders, /api/products)
+  // Intercept requests to protected routes (e.g., /api/orders, /api/products, /admin)
   const isOrdersRoute = pathname.startsWith("/api/orders");
   const isProductsRoute = pathname.startsWith("/api/products");
+  const isAdminRoute = pathname.startsWith("/admin");
 
-  if (isOrdersRoute || isProductsRoute) {
+  if (isOrdersRoute || isProductsRoute || isAdminRoute) {
     let token: string | null = null;
 
     // 1. Check Authorization Header
@@ -105,6 +108,15 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!token) {
+      // For admin routes, redirect to login page instead of returning JSON
+      if (isAdminRoute) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        const response = NextResponse.redirect(loginUrl);
+        setSecurityHeaders(response);
+        return response;
+      }
+
       const response = NextResponse.json(
         { success: false, message: "Unauthorized: Token missing" },
         { status: 401, headers: rateLimitHeaders }
@@ -117,6 +129,16 @@ export async function proxy(request: NextRequest) {
       // Validate token using jose
       const secretKey = getSecretKey();
       const { payload } = await jwtVerify(token, secretKey);
+
+      // For admin routes, check if user has admin role
+      if (isAdminRoute && payload.role !== "ADMIN") {
+        const response = NextResponse.json(
+          { success: false, message: "Forbidden: Admin access required" },
+          { status: 403, headers: rateLimitHeaders }
+        );
+        setSecurityHeaders(response);
+        return response;
+      }
 
       // Clone request headers and insert user info
       const requestHeaders = new Headers(request.headers);
@@ -134,6 +156,15 @@ export async function proxy(request: NextRequest) {
       });
       return response;
     } catch {
+      // For admin routes, redirect to login page on invalid token
+      if (isAdminRoute) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        const response = NextResponse.redirect(loginUrl);
+        setSecurityHeaders(response);
+        return response;
+      }
+
       const response = NextResponse.json(
         { success: false, message: "Unauthorized: Invalid or expired token" },
         { status: 401, headers: rateLimitHeaders }
@@ -151,7 +182,7 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Match all API routes except public auth endpoints
+// Match API routes and admin routes
 export const config = {
-  matcher: "/api/:path*",
+  matcher: ["/api/:path*", "/admin/:path*"],
 };
