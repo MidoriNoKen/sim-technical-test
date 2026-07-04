@@ -10,10 +10,10 @@ export class AppError extends Error {
   }
 }
 
-export interface ApiResponseOptions<T = any> {
+export interface ApiResponseOptions<T = unknown> {
   success: boolean;
   data?: T;
-  error?: string | any;
+  error?: unknown;
   message?: string;
 }
 
