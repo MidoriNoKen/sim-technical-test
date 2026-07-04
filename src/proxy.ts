@@ -8,10 +8,11 @@ const secretKey = encoder.encode(JWT_SECRET);
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Intercept requests to protected routes (e.g., /api/orders, and potentially others)
+  // Intercept requests to protected routes (e.g., /api/orders, /api/products)
   const isOrdersRoute = pathname.startsWith("/api/orders");
+  const isProductsRoute = pathname.startsWith("/api/products");
 
-  if (isOrdersRoute) {
+  if (isOrdersRoute || isProductsRoute) {
     let token: string | null = null;
 
     // 1. Check Authorization Header
