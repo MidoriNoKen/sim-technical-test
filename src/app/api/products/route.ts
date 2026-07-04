@@ -3,6 +3,7 @@ import { createProductSchema, productQuerySchema } from "@/validations/product.v
 import * as productService from "@/services/product.service";
 import { AppError, sendResponse } from "@/utils/response";
 import { z } from "zod";
+import { logger } from "@/utils/logger";
 
 export async function GET(request: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
       }, error.statusCode);
     }
 
-    console.error("GET Products error:", error);
+    logger.error({ error }, "Unhandled GET Products Error");
     return sendResponse({
       success: false,
       message: "Internal server error",
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
       }, error.statusCode);
     }
 
-    console.error("POST Product error:", error);
+    logger.error({ error }, "Unhandled POST Product Error");
     return sendResponse({
       success: false,
       message: "Internal server error",

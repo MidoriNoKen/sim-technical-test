@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { logger } from "@/utils/logger";
+import { checkRateLimit } from "@/utils/rate-limiter";
 
 function getSecretKey(): Uint8Array {
   const secret = process.env.JWT_SECRET;
@@ -14,6 +16,33 @@ function getSecretKey(): Uint8Array {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+  const method = request.method;
+
+  // Extract client IP address from headers (x-forwarded-for set by reverse proxy)
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+
+  // 1. Logging incoming requests
+  logger.info({ method, url: pathname, ip }, "Incoming API Request");
+
+  // 2. Redis-based rate limiting check
+  let rateLimitHeaders: Record<string, string> = {};
+  try {
+    const rateLimit = await checkRateLimit(ip);
+    rateLimitHeaders = {
+      "X-RateLimit-Limit": rateLimit.limit.toString(),
+      "X-RateLimit-Remaining": rateLimit.remaining.toString(),
+      "Retry-After": rateLimit.reset.toString(),
+    };
+    if (!rateLimit.success) {
+      logger.warn({ method, url: pathname, ip }, "Rate limit exceeded");
+      return NextResponse.json(
+        { success: false, message: "Too many requests. Please try again later." },
+        { status: 429, headers: rateLimitHeaders }
+      );
+    }
+  } catch (error) {
+    logger.error({ error, ip }, "Rate limiter check failed (fail-open)");
+  }
 
   // Intercept requests to protected routes (e.g., /api/orders, /api/products)
   const isOrdersRoute = pathname.startsWith("/api/orders");
@@ -39,7 +68,7 @@ export async function proxy(request: NextRequest) {
     if (!token) {
       return NextResponse.json(
         { success: false, message: "Unauthorized: Token missing" },
-        { status: 401 }
+        { status: 401, headers: rateLimitHeaders }
       );
     }
 
@@ -53,20 +82,29 @@ export async function proxy(request: NextRequest) {
       requestHeaders.set("x-user-id", payload.userId as string);
       requestHeaders.set("x-user-role", payload.role as string);
 
-      return NextResponse.next({
+      const response = NextResponse.next({
         request: {
           headers: requestHeaders,
         },
       });
+      // Attach rate limit headers to pass-through response
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
+      return response;
     } catch {
       return NextResponse.json(
         { success: false, message: "Unauthorized: Invalid or expired token" },
-        { status: 401 }
+        { status: 401, headers: rateLimitHeaders }
       );
     }
   }
 
-  return NextResponse.next();
+  const response = NextResponse.next();
+  Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+    response.headers.set(key, value);
+  });
+  return response;
 }
 
 // Match all API routes except public auth endpoints

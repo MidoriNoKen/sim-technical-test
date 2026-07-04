@@ -3,6 +3,7 @@ import { updateProductSchema } from "@/validations/product.validation";
 import * as productService from "@/services/product.service";
 import { AppError, sendResponse } from "@/utils/response";
 import { z } from "zod";
+import { logger } from "@/utils/logger";
 
 type RouteContext = { params: Promise<{ id: string }> };
 
@@ -37,7 +38,7 @@ export async function GET(
       }, error.statusCode);
     }
 
-    console.error("GET Product by ID error:", error);
+    logger.error({ error }, "Unhandled GET Product by ID Error");
     return sendResponse({
       success: false,
       message: "Internal server error",
@@ -94,7 +95,7 @@ export async function PUT(
       }, error.statusCode);
     }
 
-    console.error("PUT Product error:", error);
+    logger.error({ error }, "Unhandled PUT Product Error");
     return sendResponse({
       success: false,
       message: "Internal server error",
@@ -132,7 +133,7 @@ export async function DELETE(
       }, error.statusCode);
     }
 
-    console.error("DELETE Product error:", error);
+    logger.error({ error }, "Unhandled DELETE Product Error");
     return sendResponse({
       success: false,
       message: "Internal server error",
