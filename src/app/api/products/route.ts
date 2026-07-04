@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createProductSchema, productQuerySchema } from "@/validations/product.validation";
 import * as productService from "@/services/product.service";
 import { AppError, sendResponse } from "@/utils/response";
+import { sanitizeStrings } from "@/utils/sanitize";
 import { z } from "zod";
 import { logger } from "@/utils/logger";
 
@@ -57,7 +58,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const validatedData = createProductSchema.parse(body);
+    const sanitizedBody = sanitizeStrings(body);
+    const validatedData = createProductSchema.parse(sanitizedBody);
 
     const product = await productService.createProduct(validatedData);
 

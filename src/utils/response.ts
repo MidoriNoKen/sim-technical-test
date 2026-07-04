@@ -17,6 +17,28 @@ export interface ApiResponseOptions<T = unknown> {
   message?: string;
 }
 
+/**
+ * Sanitizes error details for production responses to prevent leaking
+ * internal stack traces or sensitive database information.
+ */
+function sanitizeErrorForProduction(error: unknown): unknown {
+  if (process.env.NODE_ENV !== "production") {
+    return error;
+  }
+
+  // In production, never expose raw error objects that might contain stack traces
+  if (error instanceof Error) {
+    return "An internal error occurred";
+  }
+
+  // If it's a plain object, only allow safe serializable values
+  if (typeof error === "object" && error !== null) {
+    return "An internal error occurred";
+  }
+
+  return error;
+}
+
 export function sendResponse<T>(
   { success, data, error, message }: ApiResponseOptions<T>,
   status: number = 200
@@ -25,7 +47,7 @@ export function sendResponse<T>(
     {
       success,
       ...(data !== undefined && { data }),
-      ...(error !== undefined && { error }),
+      ...(error !== undefined && { error: sanitizeErrorForProduction(error) }),
       ...(message !== undefined && { message }),
     },
     { status }

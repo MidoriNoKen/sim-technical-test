@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { updateProductSchema } from "@/validations/product.validation";
 import * as productService from "@/services/product.service";
 import { AppError, sendResponse } from "@/utils/response";
+import { sanitizeStrings } from "@/utils/sanitize";
 import { z } from "zod";
 import { logger } from "@/utils/logger";
 
@@ -63,7 +64,8 @@ export async function PUT(
     }
 
     const body = await request.json();
-    const validatedData = updateProductSchema.parse(body);
+    const sanitizedBody = sanitizeStrings(body);
+    const validatedData = updateProductSchema.parse(sanitizedBody);
 
     const product = await productService.updateProduct(id, validatedData);
 
