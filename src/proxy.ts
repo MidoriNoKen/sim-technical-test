@@ -18,8 +18,8 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
-  // Extract client IP address safely
-  const ip = request.ip || request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+  // Extract client IP address from headers (x-forwarded-for set by reverse proxy)
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
 
   // 1. Logging incoming requests
   logger.info({ method, url: pathname, ip }, "Incoming API Request");
