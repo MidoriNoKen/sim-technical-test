@@ -11,9 +11,6 @@ echo "PostgreSQL is ready."
 echo "Applying manual raw SQL schema..."
 PGPASSWORD=solutech_password psql -h postgres_db -U solutech_user -d solutech_db -f database/schema.sql
 
-echo "Generating Prisma Client to sync..."
-npx prisma generate
-
 echo "Seeding the database..."
 npx prisma db seed
 
