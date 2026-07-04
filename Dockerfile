@@ -23,8 +23,8 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV production
-# Install netcat, dos2unix, and prisma CLI globally
-RUN apk add --no-cache netcat-openbsd dos2unix && npm install -g prisma@6.2.1
+# Install netcat, dos2unix, postgresql-client, and prisma CLI globally
+RUN apk add --no-cache netcat-openbsd dos2unix postgresql-client && npm install -g prisma@6.2.1
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
