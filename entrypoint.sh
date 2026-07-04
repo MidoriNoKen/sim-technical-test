@@ -8,6 +8,14 @@ while ! nc -z postgres_db 5432; do
 done
 echo "PostgreSQL is ready."
 
-prisma db push --accept-data-loss --skip-generate
+echo "Applying manual raw SQL schema..."
+PGPASSWORD=solutech_password psql -h postgres_db -U solutech_user -d solutech_db -f database/schema.sql
 
+echo "Generating Prisma Client to sync..."
+npx prisma generate
+
+echo "Seeding the database..."
+npx prisma db seed
+
+echo "Starting Next.js stand-alone server..."
 exec node server.js
