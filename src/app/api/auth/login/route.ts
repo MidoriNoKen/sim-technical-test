@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     if (error instanceof z.ZodError) {
       return sendResponse({
         success: false,
-        error: error.errors,
+        error: error.issues,
         message: "Validation failed",
       }, 400);
     }

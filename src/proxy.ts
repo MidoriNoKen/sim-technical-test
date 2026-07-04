@@ -5,7 +5,7 @@ const JWT_SECRET = process.env.JWT_SECRET || "super_secret_solutech_key_2026";
 const encoder = new TextEncoder();
 const secretKey = encoder.encode(JWT_SECRET);
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Intercept requests to protected routes (e.g., /api/orders, and potentially others)
@@ -39,7 +39,7 @@ export async function middleware(request: NextRequest) {
       // Validate token using jose
       const { payload } = await jwtVerify(token, secretKey);
       
-      // Clone request headers and insert user info (optional, but useful for downstream)
+      // Clone request headers and insert user info
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", payload.userId as string);
       requestHeaders.set("x-user-role", payload.role as string);
