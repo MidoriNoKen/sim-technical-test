@@ -14,6 +14,31 @@ function getSecretKey(): Uint8Array {
   return new TextEncoder().encode(secret);
 }
 
+/**
+ * Sets security headers on a response (Helmet-equivalent for Next.js).
+ */
+function setSecurityHeaders(response: NextResponse): void {
+  const isProduction = process.env.NODE_ENV === "production";
+
+  response.headers.set("X-Content-Type-Options", "nosniff");
+  response.headers.set("X-Frame-Options", "DENY");
+  response.headers.set("X-XSS-Protection", "0");
+  response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  response.headers.set(
+    "Content-Security-Policy",
+    isProduction
+      ? "default-src 'none'; frame-ancestors 'none'; base-uri 'self'"
+      : "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'"
+  );
+  response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  response.headers.set("Strict-Transport-Security", isProduction ? "max-age=31536000; includeSubDomains" : "max-age=0");
+  response.headers.set("Cross-Origin-Resource-Policy", "same-origin");
+  response.headers.set("Cross-Origin-Opener-Policy", "same-origin");
+  response.headers.delete("X-Powered-By");
+}
+
+const MAX_BODY_SIZE = 100_000; // 100KB max request body
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
@@ -21,10 +46,24 @@ export async function proxy(request: NextRequest) {
   // Extract client IP address from headers (x-forwarded-for set by reverse proxy)
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
 
-  // 1. Logging incoming requests
+  // 1. Request body size limiting for write methods
+  if (["POST", "PUT", "PATCH"].includes(method)) {
+    const contentLength = request.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+      logger.warn({ method, url: pathname, ip, contentLength }, "Request body too large");
+      const response = NextResponse.json(
+        { success: false, message: "Request body too large" },
+        { status: 413 }
+      );
+      setSecurityHeaders(response);
+      return response;
+    }
+  }
+
+  // 2. Logging incoming requests
   logger.info({ method, url: pathname, ip }, "Incoming API Request");
 
-  // 2. Redis-based rate limiting check
+  // 3. Redis-based rate limiting check
   let rateLimitHeaders: Record<string, string> = {};
   try {
     const rateLimit = await checkRateLimit(ip);
@@ -35,20 +74,23 @@ export async function proxy(request: NextRequest) {
     };
     if (!rateLimit.success) {
       logger.warn({ method, url: pathname, ip }, "Rate limit exceeded");
-      return NextResponse.json(
+      const response = NextResponse.json(
         { success: false, message: "Too many requests. Please try again later." },
         { status: 429, headers: rateLimitHeaders }
       );
+      setSecurityHeaders(response);
+      return response;
     }
   } catch (error) {
     logger.error({ error, ip }, "Rate limiter check failed (fail-open)");
   }
 
-  // Intercept requests to protected routes (e.g., /api/orders, /api/products)
+  // Intercept requests to protected routes (e.g., /api/orders, /api/products, /admin)
   const isOrdersRoute = pathname.startsWith("/api/orders");
   const isProductsRoute = pathname.startsWith("/api/products");
+  const isAdminRoute = pathname.startsWith("/admin");
 
-  if (isOrdersRoute || isProductsRoute) {
+  if (isOrdersRoute || isProductsRoute || isAdminRoute) {
     let token: string | null = null;
 
     // 1. Check Authorization Header
@@ -66,17 +108,38 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!token) {
-      return NextResponse.json(
+      // For admin routes, redirect to login page instead of returning JSON
+      if (isAdminRoute) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        const response = NextResponse.redirect(loginUrl);
+        setSecurityHeaders(response);
+        return response;
+      }
+
+      const response = NextResponse.json(
         { success: false, message: "Unauthorized: Token missing" },
         { status: 401, headers: rateLimitHeaders }
       );
+      setSecurityHeaders(response);
+      return response;
     }
 
     try {
       // Validate token using jose
       const secretKey = getSecretKey();
       const { payload } = await jwtVerify(token, secretKey);
-      
+
+      // For admin routes, check if user has admin role
+      if (isAdminRoute && payload.role !== "ADMIN") {
+        const response = NextResponse.json(
+          { success: false, message: "Forbidden: Admin access required" },
+          { status: 403, headers: rateLimitHeaders }
+        );
+        setSecurityHeaders(response);
+        return response;
+      }
+
       // Clone request headers and insert user info
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", payload.userId as string);
@@ -93,10 +156,21 @@ export async function proxy(request: NextRequest) {
       });
       return response;
     } catch {
-      return NextResponse.json(
+      // For admin routes, redirect to login page on invalid token
+      if (isAdminRoute) {
+        const loginUrl = new URL("/login", request.url);
+        loginUrl.searchParams.set("redirect", pathname);
+        const response = NextResponse.redirect(loginUrl);
+        setSecurityHeaders(response);
+        return response;
+      }
+
+      const response = NextResponse.json(
         { success: false, message: "Unauthorized: Invalid or expired token" },
         { status: 401, headers: rateLimitHeaders }
       );
+      setSecurityHeaders(response);
+      return response;
     }
   }
 
@@ -104,10 +178,11 @@ export async function proxy(request: NextRequest) {
   Object.entries(rateLimitHeaders).forEach(([key, value]) => {
     response.headers.set(key, value);
   });
+  setSecurityHeaders(response);
   return response;
 }
 
-// Match all API routes except public auth endpoints
+// Match API routes and admin routes
 export const config = {
-  matcher: "/api/:path*",
+  matcher: ["/api/:path*", "/admin/:path*"],
 };
