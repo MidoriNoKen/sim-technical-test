@@ -3,6 +3,7 @@ import { loginSchema } from "@/validations/auth.validation";
 import { login } from "@/services/auth.service";
 import { AppError, sendResponse } from "@/utils/response";
 import { z } from "zod";
+import { logger } from "@/utils/logger";
 
 export async function POST(request: NextRequest) {
   try {
@@ -50,7 +51,7 @@ export async function POST(request: NextRequest) {
       }, error.statusCode);
     }
 
-    console.error("Login error:", error);
+    logger.error({ error }, "Unhandled Login Error");
     return sendResponse({
       success: false,
       message: "Internal server error",
