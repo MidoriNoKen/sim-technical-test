@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  postgres_db:
+    image: postgres:16-alpine
+    container_name: postgres_db
+    environment:
+      POSTGRES_USER: solutech_user
+      POSTGRES_PASSWORD: solutech_password
+      POSTGRES_DB: solutech_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  redis_cache:
+    image: redis:alpine
+    container_name: redis_cache
+    ports:
+      - "6379:6379"
+
+  next_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: next_app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - postgres_db
+      - redis_cache
+    env_file:
+      - .env.example
+    environment:
+      - DATABASE_URL=postgresql://solutech_user:solutech_password@postgres_db:5432/solutech_db?schema=public
+      - REDIS_URL=redis://redis_cache:6379
+
+volumes:
+  postgres_data:
