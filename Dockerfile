@@ -15,7 +15,8 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV production
-RUN apk add --no-cache netcat-openbsd
+# Install netcat and dos2unix
+RUN apk add --no-cache netcat-openbsd dos2unix
 
 COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
@@ -24,7 +25,7 @@ COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/database ./database
 COPY --from=builder /app/entrypoint.sh ./entrypoint.sh
 
-RUN chmod +x ./entrypoint.sh
+RUN dos2unix ./entrypoint.sh && chmod +x ./entrypoint.sh
 EXPOSE 3000
 ENV PORT 3000
 CMD ["./entrypoint.sh"]
