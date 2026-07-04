@@ -8,10 +8,17 @@ const CACHE_PREFIX = "products:";
 
 async function clearProductCache() {
   try {
-    const keys = await redis.keys(`${CACHE_PREFIX}*`);
-    if (keys.length > 0) {
-      await redis.del(...keys);
-      console.log("Product caches invalidated successfully");
+    let cursor = "0";
+    let allKeys: string[] = [];
+    do {
+      const reply = await redis.scan(cursor, "MATCH", `${CACHE_PREFIX}*`, "COUNT", 100);
+      cursor = reply[0];
+      allKeys = allKeys.concat(reply[1]);
+    } while (cursor !== "0");
+
+    if (allKeys.length > 0) {
+      await redis.del(...allKeys);
+      console.log(`Product caches invalidated successfully (${allKeys.length} keys)`);
     }
   } catch (error) {
     console.error("Failed to invalidate product caches:", error);

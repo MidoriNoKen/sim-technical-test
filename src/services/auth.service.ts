@@ -18,8 +18,13 @@ export async function login(data: z.infer<typeof loginSchema>) {
 
   const token = signToken({ userId: user.id, role: user.role });
 
-  // Exclude password from returned user object
-  const { password: _, ...userWithoutPassword } = user;
+  const userWithoutPassword = {
+    id: user.id,
+    email: user.email,
+    role: user.role,
+    createdAt: user.createdAt,
+    updatedAt: user.updatedAt,
+  };
 
   return {
     token,

@@ -12,6 +12,16 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
+
+    // Validate UUID format
+    const idValidation = z.string().uuid().safeParse(id);
+    if (!idValidation.success) {
+      return sendResponse({
+        success: false,
+        message: "Invalid ID format. Must be a valid UUID.",
+      }, 400);
+    }
+
     const product = await productService.getProductById(id);
 
     return sendResponse({
@@ -19,7 +29,7 @@ export async function GET(
       data: product,
       message: "Product fetched successfully",
     }, 200);
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof AppError) {
       return sendResponse({
         success: false,
@@ -41,6 +51,16 @@ export async function PUT(
 ) {
   try {
     const { id } = await context.params;
+
+    // Validate UUID format
+    const idValidation = z.string().uuid().safeParse(id);
+    if (!idValidation.success) {
+      return sendResponse({
+        success: false,
+        message: "Invalid ID format. Must be a valid UUID.",
+      }, 400);
+    }
+
     const body = await request.json();
     const validatedData = updateProductSchema.parse(body);
 
@@ -51,7 +71,14 @@ export async function PUT(
       data: product,
       message: "Product updated successfully",
     }, 200);
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return sendResponse({
+        success: false,
+        message: "Invalid JSON input",
+      }, 400);
+    }
+
     if (error instanceof z.ZodError) {
       return sendResponse({
         success: false,
@@ -81,13 +108,23 @@ export async function DELETE(
 ) {
   try {
     const { id } = await context.params;
+
+    // Validate UUID format
+    const idValidation = z.string().uuid().safeParse(id);
+    if (!idValidation.success) {
+      return sendResponse({
+        success: false,
+        message: "Invalid ID format. Must be a valid UUID.",
+      }, 400);
+    }
+
     await productService.deleteProduct(id);
 
     return sendResponse({
       success: true,
       message: "Product deleted successfully",
     }, 200);
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof AppError) {
       return sendResponse({
         success: false,

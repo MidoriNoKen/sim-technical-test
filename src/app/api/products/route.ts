@@ -29,7 +29,7 @@ export async function GET(request: NextRequest) {
         }
       })
     }, 200);
-  } catch (error: any) {
+  } catch (error) {
     if (error instanceof z.ZodError) {
       return sendResponse({
         success: false,
@@ -65,7 +65,14 @@ export async function POST(request: NextRequest) {
       data: product,
       message: "Product created successfully",
     }, 201);
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return sendResponse({
+        success: false,
+        message: "Invalid JSON input",
+      }, 400);
+    }
+
     if (error instanceof z.ZodError) {
       return sendResponse({
         success: false,

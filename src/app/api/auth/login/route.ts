@@ -27,7 +27,14 @@ export async function POST(request: NextRequest) {
     });
 
     return response;
-  } catch (error: any) {
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return sendResponse({
+        success: false,
+        message: "Invalid JSON input",
+      }, 400);
+    }
+
     if (error instanceof z.ZodError) {
       return sendResponse({
         success: false,
