@@ -8,6 +8,6 @@ while ! nc -z postgres_db 5432; do
 done
 echo "PostgreSQL is ready."
 
-prisma db push --accept-data-loss
+prisma db push --accept-data-loss --skip-generate
 
 exec node server.js
