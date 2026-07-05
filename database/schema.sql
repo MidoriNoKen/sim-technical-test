@@ -57,3 +57,13 @@ ALTER TABLE "OrderItem" ADD CONSTRAINT "OrderItem_productId_fkey" FOREIGN KEY ("
 
 -- Ensure schema updates for existing database instances:
 ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "status" TEXT NOT NULL DEFAULT 'PENDING';
+ALTER TABLE "Order" ADD COLUMN IF NOT EXISTS "verifiedById" UUID;
+
+-- We can safely drop and recreate the constraint for idempotency, or just assume it's created on fresh DBs.
+-- Since this is a raw SQL seed script, we just add the FK if it doesn't exist.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'Order_verifiedById_fkey') THEN
+        ALTER TABLE "Order" ADD CONSTRAINT "Order_verifiedById_fkey" FOREIGN KEY ("verifiedById") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+    END IF;
+END $$;

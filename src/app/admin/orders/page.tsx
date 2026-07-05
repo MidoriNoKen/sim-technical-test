@@ -217,6 +217,8 @@ function OrdersContent() {
           let badgeClass = "bg-amber-500/10 text-amber-400 border-amber-500/20"
           if (status === "COMPLETED") {
             badgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+          } else if (status === "VERIFIED") {
+            badgeClass = "bg-violet-500/10 text-violet-400 border-violet-500/20"
           } else if (status === "CANCELLED") {
             badgeClass = "bg-rose-500/10 text-rose-400 border-rose-500/20"
           }

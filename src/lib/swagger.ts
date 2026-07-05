@@ -384,7 +384,7 @@ export const getApiDocs = () => {
                     properties: {
                       status: {
                         type: "string",
-                        enum: ["PENDING", "COMPLETED", "CANCELLED"],
+                        enum: ["PENDING", "VERIFIED", "COMPLETED", "CANCELLED"],
                         example: "COMPLETED",
                       },
                     },

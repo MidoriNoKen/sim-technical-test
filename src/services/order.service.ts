@@ -114,7 +114,7 @@ export async function updateOrderStatus(
     throw new AppError("User not found. Please log in again.", 401);
   }
 
-  const validStatuses = ["PENDING", "COMPLETED", "CANCELLED"];
+  const validStatuses = ["PENDING", "COMPLETED", "CANCELLED", "VERIFIED"];
   if (!validStatuses.includes(newStatus)) {
     throw new AppError("Invalid order status", 400);
   }
@@ -173,7 +173,8 @@ export async function updateOrderStatus(
     }
 
     // 3. Update the order status
-    return orderRepository.updateOrderStatus(tx, orderId, newStatus);
+    const verifiedById = newStatus === "VERIFIED" ? userId : undefined;
+    return orderRepository.updateOrderStatus(tx, orderId, newStatus, verifiedById);
   });
 
   await clearProductCache();

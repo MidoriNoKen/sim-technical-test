@@ -52,45 +52,33 @@ async function main() {
 
   // 3. Seed Products
   console.log("Seeding products...");
-  const productsData = [
-    {
-      name: "Wireless Mouse",
-      description: "High performance ergonomic wireless mouse",
-      price: 250000,
-      stock: 50,
-    },
-    {
-      name: "Mechanical Keyboard",
-      description: "RGB Backlit mechanical keyboard with brown switches",
-      price: 750000,
-      stock: 30,
-    },
-    {
-      name: "Gaming Monitor 24\"",
-      description: "144Hz refresh rate gaming monitor",
-      price: 2100000,
-      stock: 15,
-    },
-    {
-      name: "USB-C Hub 8-in-1",
-      description: "Multi-port USB-C adapter hub",
-      price: 350000,
-      stock: 100,
-    },
-    {
-      name: "Bluetooth Headphones",
-      description: "Over-ear noise cancelling headphones",
-      price: 1200000,
-      stock: 20,
-    },
-  ];
+  const adjectives = ["Pro", "Ultra", "Slim", "Wireless", "Mechanical", "Curved", "Portable", "Ergonomic", "Smart", "Compact", "Heavy Duty", "Premium", "High-Speed", "RGB", "Silent"];
+  const categories = ["Mouse", "Keyboard", "Monitor", "USB Hub", "Headphones", "USB-C Cable", "Power Adapter", "Fast Charger", "Bluetooth Speaker", "Laptop Stand", "Desk Mat", "Webcam", "Microphone", "SSD Enclosure", "Graphic Tablet"];
+  const brands = ["Logitech", "Razer", "Asus", "Sony", "Anker", "Ugreen", "Baseus", "Corsair", "Keychron", "Dell", "HP", "Samsung"];
 
-  for (const product of productsData) {
-    const createdProduct = await prisma.product.create({
-      data: product,
-    });
-    console.log(`Product seeded: "${createdProduct.name}" (ID: ${createdProduct.id})`);
+  const productsData = [];
+  const generatedNames = new Set();
+
+  while (productsData.length < 200) {
+    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
+    const cat = categories[Math.floor(Math.random() * categories.length)];
+    const brand = brands[Math.floor(Math.random() * brands.length)];
+    const name = `${brand} ${adj} ${cat}`;
+
+    if (!generatedNames.has(name)) {
+      generatedNames.add(name);
+      const price = (Math.floor(Math.random() * 95) + 5) * 50000;
+      const stock = Math.floor(Math.random() * 140) + 10;
+      const description = `Premium quality ${adj.toLowerCase()} ${cat.toLowerCase()} manufactured by ${brand}. Perfect for professional and gaming setups.`;
+
+      productsData.push({ name, description, price, stock });
+    }
   }
+
+  await prisma.product.createMany({
+    data: productsData,
+  });
+  console.log(`Seeded ${productsData.length} products successfully.`);
 
   console.log("Seeding finished successfully.");
 }

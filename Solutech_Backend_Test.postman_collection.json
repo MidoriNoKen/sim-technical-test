@@ -343,7 +343,7 @@
                 "{{order_id}}"
               ]
             },
-            "description": "Updates the status of an existing order."
+            "description": "Updates the status of an existing order. Valid status values include: PENDING, VERIFIED, COMPLETED, CANCELLED."
           },
           "response": []
         },

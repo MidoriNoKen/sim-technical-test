@@ -81,6 +81,9 @@ export async function findAllOrders(params: {
         user: {
           select: { email: true },
         },
+        verifiedBy: {
+          select: { email: true },
+        },
         orderItems: {
           include: {
             product: {
@@ -117,6 +120,9 @@ export async function findOrderById(orderId: string) {
       user: {
         select: { email: true },
       },
+      verifiedBy: {
+        select: { email: true },
+      },
       orderItems: {
         include: {
           product: {
@@ -134,11 +140,15 @@ export async function findOrderById(orderId: string) {
 export async function updateOrderStatus(
   tx: Prisma.TransactionClient,
   orderId: string,
-  status: string
+  status: string,
+  verifiedById?: string
 ) {
   return tx.order.update({
     where: { id: orderId },
-    data: { status },
+    data: { 
+      status,
+      ...(verifiedById && { verifiedById }) 
+    },
     include: {
       orderItems: true,
     },

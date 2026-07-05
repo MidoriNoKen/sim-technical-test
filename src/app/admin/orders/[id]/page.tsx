@@ -24,8 +24,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ChevronDown } from "lucide-react"
 
 interface OrderItem {
   id: string
@@ -48,6 +55,9 @@ interface Order {
   user: {
     email: string
   }
+  verifiedBy?: {
+    email: string
+  }
   orderItems: OrderItem[]
 }
 
@@ -60,6 +70,7 @@ function OrderDetailContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   async function handleUpdateStatus(status: string) {
     setActionLoading(true)
@@ -210,59 +221,68 @@ function OrderDetailContent() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
-            <Button
-              onClick={() => handleUpdateStatus("COMPLETED")}
-              disabled={actionLoading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md shadow-emerald-900/20"
-            >
-              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
-              Complete Order
-            </Button>
-          )}
-          {order.status !== "CANCELLED" && (
-            <Button
-              onClick={() => handleUpdateStatus("CANCELLED")}
-              disabled={actionLoading}
-              variant="outline"
-              className="border-rose-900/60 bg-rose-950/10 text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 font-semibold"
-            >
-              Cancel Order
-            </Button>
-          )}
-          
-          <AlertDialog>
-            <AlertDialogTrigger render={
+        {/* Action Buttons Dropdown */}
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={
               <Button
                 disabled={actionLoading}
-                variant="destructive"
-                className="bg-rose-600 hover:bg-rose-700 font-semibold shadow-md shadow-rose-900/20"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold shadow-md flex items-center gap-1.5"
               />
             }>
-              <Trash2 className="mr-1.5 h-4 w-4" />
-              Delete Order
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-slate-100">Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription className="text-slate-400">
-                  This action cannot be undone. This will permanently delete this order and restock the products.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-slate-800 bg-slate-800/50 text-slate-300 hover:bg-slate-850">
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteOrder}
-                  className="bg-rose-600 hover:bg-rose-700 text-white"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Manage Order"}
+              <ChevronDown className="h-4 w-4 opacity-75" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200 w-48">
+              <DropdownMenuLabel className="text-slate-400">Order Decisions</DropdownMenuLabel>
+              
+              {order.status === "PENDING" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("VERIFIED")}
+                    className="text-blue-400 focus:text-blue-300 focus:bg-blue-950/30 cursor-pointer font-medium"
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Verify Order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("CANCELLED")}
+                    className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer font-medium"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Cancel Order
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {order.status === "VERIFIED" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("COMPLETED")}
+                    className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-950/30 cursor-pointer font-medium"
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Complete Order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("CANCELLED")}
+                    className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer font-medium"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Cancel Order
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              <DropdownMenuItem
+                onClick={() => setIsDeleteDialogOpen(true)}
+                className="text-slate-400 focus:text-slate-200 focus:bg-slate-800/40 cursor-pointer font-medium"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
@@ -290,6 +310,8 @@ function OrderDetailContent() {
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${
                   order.status === "COMPLETED" 
                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    : order.status === "VERIFIED"
+                    ? "bg-violet-500/10 text-violet-400 border-violet-500/20"
                     : order.status === "CANCELLED"
                     ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
                     : "bg-amber-500/10 text-amber-400 border-amber-500/20"
@@ -348,7 +370,16 @@ function OrderDetailContent() {
                 </span>
               </div>
 
-              <div className="border-t border-slate-800/60 pt-3 space-y-2">
+              {order.verifiedBy && (
+                <div className="flex items-center justify-between text-sm mt-3 pt-3 border-t border-slate-800/60">
+                  <span className="text-slate-400">Verified By (Admin)</span>
+                  <span className="text-violet-300 font-medium truncate max-w-[200px]">
+                    {order.verifiedBy.email}
+                  </span>
+                </div>
+              )}
+
+              <div className="border-t border-slate-800/60 pt-3 grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-slate-500" />
                   <div>
@@ -363,7 +394,7 @@ function OrderDetailContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-2 text-sm border-l border-slate-800/65 pl-4">
                   <Calendar className="h-4 w-4 text-slate-500" />
                   <div>
                     <p className="text-xs text-slate-500">Last Updated</p>
@@ -454,6 +485,28 @@ function OrderDetailContent() {
           </div>
         </CardContent>
       </Card>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-100">Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This action cannot be undone. This will permanently delete this order and restock the products.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="border-slate-800 bg-slate-800/50 text-slate-300 hover:bg-slate-850">
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteOrder}
+              className="bg-rose-600 hover:bg-rose-700 text-white"
+            >
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
