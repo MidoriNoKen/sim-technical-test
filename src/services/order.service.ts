@@ -7,6 +7,15 @@ export async function createOrder(
   userId: string,
   items: { productId: string; quantity: number }[]
 ) {
+  // Validate that the user exists before creating the order
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError("User not found. Please log in again.", 401);
+  }
+
   const result = await prisma.$transaction(async (tx) => {
     let totalAmount = 0;
     const preparedItems = [];
