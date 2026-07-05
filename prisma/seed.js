@@ -1,6 +1,5 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 const { PrismaClient } = require("@prisma/client");
-const bcrypt = require("bcryptjs");
 
 const prisma = new PrismaClient();
 
@@ -17,7 +16,7 @@ async function main() {
 
   // 2. Seed Admin User
   console.log("Seeding Admin user...");
-  const hashedPassword = await bcrypt.hash("password123", 10);
+  const hashedPassword = "$2b$10$VDHRY8rjLDyRXm82AOgl2O5wLJAwFenpvpcqA1IVCXF55i.MOamfe";
   const admin = await prisma.user.create({
     data: {
       email: "admin@solutech.id",
