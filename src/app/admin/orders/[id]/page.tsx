@@ -213,33 +213,34 @@ function OrderDetailContent() {
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-wrap items-center gap-2.5">
-          {order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
-            <Button
-              onClick={() => handleUpdateStatus("COMPLETED")}
-              disabled={actionLoading}
-              className="bg-emerald-600 hover:bg-emerald-700 text-white font-semibold shadow-md shadow-emerald-900/20"
-            >
-              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
-              Complete Order
-            </Button>
-          )}
+        {/* Action Buttons Group */}
+        <div className="inline-flex items-center rounded-xl border border-slate-800 bg-slate-950/40 p-1 shadow-lg backdrop-blur-sm">
           {order.status === "PENDING" && (
             <Button
               onClick={() => handleUpdateStatus("VERIFIED")}
               disabled={actionLoading}
-              className="bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-md shadow-violet-900/20"
+              className="bg-violet-600/90 hover:bg-violet-600 text-white font-semibold shadow-md transition-all rounded-lg px-4 h-9 text-xs"
             >
-              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
+              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
               Verify Order
+            </Button>
+          )}
+          {order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
+            <Button
+              onClick={() => handleUpdateStatus("COMPLETED")}
+              disabled={actionLoading}
+              className="bg-emerald-600/90 hover:bg-emerald-600 text-white font-semibold shadow-md transition-all rounded-lg px-4 h-9 text-xs ml-1"
+            >
+              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
+              Complete Order
             </Button>
           )}
           {order.status !== "CANCELLED" && (
             <Button
               onClick={() => handleUpdateStatus("CANCELLED")}
               disabled={actionLoading}
-              variant="outline"
-              className="border-rose-900/60 bg-rose-950/10 text-rose-400 hover:bg-rose-900/20 hover:text-rose-300 font-semibold"
+              variant="ghost"
+              className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 font-semibold transition-all rounded-lg px-4 h-9 text-xs ml-1 border border-rose-900/30"
             >
               Cancel Order
             </Button>
@@ -249,11 +250,11 @@ function OrderDetailContent() {
             <AlertDialogTrigger render={
               <Button
                 disabled={actionLoading}
-                variant="destructive"
-                className="bg-rose-600 hover:bg-rose-700 font-semibold shadow-md shadow-rose-900/20"
+                variant="ghost"
+                className="text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 font-semibold transition-all rounded-lg px-4 h-9 text-xs ml-1 border border-slate-800"
               />
             }>
-              <Trash2 className="mr-1.5 h-4 w-4" />
+              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
               Delete Order
             </AlertDialogTrigger>
             <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
@@ -372,7 +373,7 @@ function OrderDetailContent() {
                 </div>
               )}
 
-              <div className="border-t border-slate-800/60 pt-3 space-y-2">
+              <div className="border-t border-slate-800/60 pt-3 grid grid-cols-2 gap-4">
                 <div className="flex items-center gap-2 text-sm">
                   <Calendar className="h-4 w-4 text-slate-500" />
                   <div>
@@ -387,7 +388,7 @@ function OrderDetailContent() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-2 text-sm border-l border-slate-800/65 pl-4">
                   <Calendar className="h-4 w-4 text-slate-500" />
                   <div>
                     <p className="text-xs text-slate-500">Last Updated</p>
