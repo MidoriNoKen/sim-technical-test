@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres_db:
     image: postgres:16-alpine
@@ -12,12 +10,22 @@ services:
       - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U solutech_user -d solutech_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis_cache:
     image: redis:alpine
     container_name: redis_cache
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
   next_app:
     build:
@@ -27,8 +35,10 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - postgres_db
-      - redis_cache
+      postgres_db:
+        condition: service_healthy
+      redis_cache:
+        condition: service_healthy
     env_file:
       - .env.example
     environment:
