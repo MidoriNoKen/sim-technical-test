@@ -302,7 +302,7 @@ function OrdersContent() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger render={
-                <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40" />
+                <Button disabled={actionLoading} variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40" />
               }>
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
