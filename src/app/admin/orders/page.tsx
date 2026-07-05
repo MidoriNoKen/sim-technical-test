@@ -368,7 +368,7 @@ function OrdersContent() {
         },
       },
     ],
-    [router]
+    [router, actionLoading]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
