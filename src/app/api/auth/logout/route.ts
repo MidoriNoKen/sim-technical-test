@@ -10,9 +10,10 @@ export async function POST(request: NextRequest) {
     }, 200);
 
     // Clear JWT token cookie
+    const isSecure = process.env.COOKIE_SECURE === "true";
     response.cookies.set("token", "", {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       maxAge: 0, // expire immediately
       path: "/",

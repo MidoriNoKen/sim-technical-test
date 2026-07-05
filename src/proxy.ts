@@ -24,11 +24,20 @@ function setSecurityHeaders(response: NextResponse): void {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "0"); // Deprecated but still set for legacy clients
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // CSP: allow self-hosted scripts, styles (including inline for Next.js), fonts, and data URIs.
+  // Avoid 'none' which completely breaks Next.js CSS and JS loading.
   response.headers.set(
     "Content-Security-Policy",
-    isProduction
-      ? "default-src 'none'; frame-ancestors 'none'; base-uri 'self'"
-      : "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'"
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed by Next.js runtime
+      "style-src 'self' 'unsafe-inline'",               // unsafe-inline needed by Tailwind/Next.js
+      "font-src 'self' data:",
+      "img-src 'self' data: blob:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+    ].join("; ")
   );
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   response.headers.set("Strict-Transport-Security", isProduction ? "max-age=31536000; includeSubDomains" : "max-age=0");
@@ -183,7 +192,7 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Match API routes and admin routes
+// Match API routes and admin routes (Next.js static assets are at /_next/ so they are never matched)
 export const config = {
   matcher: ["/api/:path*", "/admin/:path*"],
 };
