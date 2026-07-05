@@ -25,7 +25,7 @@ interface Product {
 
 interface OrderItemEntry {
   productId: string
-  productName: string
+  productName?: string
   price: number
   quantity: number
   maxStock: number
@@ -85,15 +85,14 @@ export default function NewOrderPage() {
   function addItem() {
     if (products.length === 0) return
 
-    const firstProduct = products[0]
     setOrderItems((prev) => [
       ...prev,
       {
-        productId: firstProduct.id,
-        productName: firstProduct.name,
-        price: firstProduct.price,
+        productId: "",
+        productName: undefined,
+        price: 0,
         quantity: 1,
-        maxStock: firstProduct.stock,
+        maxStock: 0,
       },
     ])
   }
@@ -143,10 +142,14 @@ export default function NewOrderPage() {
       return
     }
 
-    // Validate all items have valid quantities
+    // Validate all items have selected products
     for (const item of orderItems) {
+      if (!item.productId) {
+        toast.error("Please select a product for all items")
+        return
+      }
       if (item.quantity < 1) {
-        toast.error(`Invalid quantity for "${item.productName}"`)
+        toast.error(`Invalid quantity for "${item.productName || "item"}"`)
         return
       }
       if (item.quantity > item.maxStock) {
