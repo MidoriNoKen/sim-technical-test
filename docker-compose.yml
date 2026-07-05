@@ -44,6 +44,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://solutech_user:solutech_password@postgres_db:5432/solutech_db?schema=public
       - REDIS_URL=redis://redis_cache:6379
+      - COOKIE_SECURE=false
 
 volumes:
   postgres_data:

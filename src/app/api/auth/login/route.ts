@@ -19,9 +19,11 @@ export async function POST(request: NextRequest) {
     }, 200);
 
     // Set JWT token as an HTTP-only cookie
+    // NOTE: secure=true only works over HTTPS. In Docker (HTTP), set COOKIE_SECURE=false in env.
+    const isSecure = process.env.COOKIE_SECURE === "true";
     response.cookies.set("token", result.token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: isSecure,
       sameSite: "lax",
       maxAge: 60 * 60 * 24, // 1 day in seconds
       path: "/",

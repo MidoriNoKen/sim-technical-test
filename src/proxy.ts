@@ -24,11 +24,20 @@ function setSecurityHeaders(response: NextResponse): void {
   response.headers.set("X-Frame-Options", "DENY");
   response.headers.set("X-XSS-Protection", "0"); // Deprecated but still set for legacy clients
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
+  // CSP: allow self-hosted scripts, styles (including inline for Next.js), fonts, and data URIs.
+  // Avoid 'none' which completely breaks Next.js CSS and JS loading.
   response.headers.set(
     "Content-Security-Policy",
-    isProduction
-      ? "default-src 'none'; frame-ancestors 'none'; base-uri 'self'"
-      : "default-src 'self'; style-src 'self' 'unsafe-inline'; frame-ancestors 'none'; base-uri 'self'"
+    [
+      "default-src 'self'",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed by Next.js runtime
+      "style-src 'self' 'unsafe-inline'",               // unsafe-inline needed by Tailwind/Next.js
+      "font-src 'self' data:",
+      "img-src 'self' data: blob:",
+      "connect-src 'self'",
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+    ].join("; ")
   );
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
   response.headers.set("Strict-Transport-Security", isProduction ? "max-age=31536000; includeSubDomains" : "max-age=0");
@@ -63,17 +72,33 @@ export async function proxy(request: NextRequest) {
   // 2. Logging incoming requests
   logger.info({ method, url: pathname, ip }, "Incoming API Request");
 
-  // 3. Redis-based rate limiting check
+  // Determine route types
+  const isOrdersRoute = pathname.startsWith("/api/orders");
+  const isProductsRoute = pathname.startsWith("/api/products");
+  const isAdminRoute = pathname.startsWith("/admin");
+
+  // 3. Redis-based rate limiting check with endpoint-specific limits
   let rateLimitHeaders: Record<string, string> = {};
   try {
-    const rateLimit = await checkRateLimit(ip);
+    // Determine rate limit type based on endpoint
+    let rateLimitType: "public" | "authenticated" | "admin" | "write" = "authenticated";
+
+    if (pathname === "/api/auth/login") {
+      rateLimitType = "public";
+    } else if (isAdminRoute) {
+      rateLimitType = "admin";
+    } else if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      rateLimitType = "write";
+    }
+
+    const rateLimit = await checkRateLimit(ip, rateLimitType);
     rateLimitHeaders = {
       "X-RateLimit-Limit": rateLimit.limit.toString(),
       "X-RateLimit-Remaining": rateLimit.remaining.toString(),
       "Retry-After": rateLimit.reset.toString(),
     };
     if (!rateLimit.success) {
-      logger.warn({ method, url: pathname, ip }, "Rate limit exceeded");
+      logger.warn({ method, url: pathname, ip, type: rateLimitType }, "Rate limit exceeded");
       const response = NextResponse.json(
         { success: false, message: "Too many requests. Please try again later." },
         { status: 429, headers: rateLimitHeaders }
@@ -86,9 +111,6 @@ export async function proxy(request: NextRequest) {
   }
 
   // Intercept requests to protected routes (e.g., /api/orders, /api/products, /admin)
-  const isOrdersRoute = pathname.startsWith("/api/orders");
-  const isProductsRoute = pathname.startsWith("/api/products");
-  const isAdminRoute = pathname.startsWith("/admin");
 
   if (isOrdersRoute || isProductsRoute || isAdminRoute) {
     let token: string | null = null;
@@ -183,7 +205,7 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Match API routes and admin routes
+// Match API routes and admin routes (Next.js static assets are at /_next/ so they are never matched)
 export const config = {
   matcher: ["/api/:path*", "/admin/:path*"],
 };
