@@ -71,8 +71,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {/* Sidebar Nav */}
         <nav className="flex-1 space-y-1.5 px-4 py-6">
           {sidebarItems.map((item) => {
-            const isActive = item.href === '/admin' 
-              ? pathname === '/admin' 
+            const isActive = item.href === '/admin'
+              ? pathname === '/admin'
               : (pathname === item.href || pathname?.startsWith(`${item.href}/`))
             return (
               <Link
@@ -147,8 +147,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   className="rounded-full border-slate-800 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-slate-200 relative"
                 />
               }>
-                  <Bell className="h-4 w-4" />
-                  <span className="absolute top-[5px] right-[7px] h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-slate-950 animate-pulse" />
+                <Bell className="h-4 w-4" />
+                <span className="absolute top-[5px] right-[7px] h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-slate-950 animate-pulse" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64 bg-slate-900 border-slate-800 text-slate-200 p-0 overflow-hidden">
                 <div className="bg-slate-800/50 px-4 py-3 font-semibold text-sm border-b border-slate-800">
@@ -173,14 +173,14 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
             {/* User Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger render={
-                <Button variant="outline" className="gap-2 border-slate-800 hover:bg-slate-850 text-slate-300" />
-              }>
-                <div className="flex h-5 w-5 items-center justify-center rounded bg-indigo-500/10 text-indigo-400 text-xs font-bold">
-                  A
-                </div>
-                <span className="text-xs font-medium hidden sm:inline">Admin</span>
-                <ChevronDown className="h-3 w-3 text-slate-500" />
-              </DropdownMenuTrigger>
+                <Button variant="outline" className="gap-2 border-slate-800 hover:bg-slate-850 text-slate-300">
+                  <div className="flex h-5 w-5 items-center justify-center rounded bg-indigo-500/10 text-indigo-400 text-xs font-bold">
+                    A
+                  </div>
+                  <span className="text-xs font-medium hidden sm:inline">Admin</span>
+                  <ChevronDown className="h-3 w-3 text-slate-500" />
+                </Button>
+              } />
               <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
                 <DropdownMenuLabel className="font-normal">
                   <div className="flex flex-col space-y-1">
@@ -194,8 +194,8 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                   Profile Settings
                 </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-800" />
-                <DropdownMenuItem 
-                  onClick={handleLogout} 
+                <DropdownMenuItem
+                  onClick={handleLogout}
                   className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
                 >
                   <LogOut className="mr-2 h-4 w-4" />

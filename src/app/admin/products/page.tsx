@@ -240,12 +240,18 @@ function ProductsContent() {
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
               <DropdownMenuLabel className="text-slate-400">Actions</DropdownMenuLabel>
-              <DropdownMenuItem render={<Link href={`/admin/products/${product.id}/edit`} />}>
+              <DropdownMenuItem 
+                onClick={() => router.push(`/admin/products/${product.id}/edit`)}
+                className="cursor-pointer"
+              >
                 <Edit className="mr-2 h-4 w-4" />
                 Edit Product
               </DropdownMenuItem>
               <DropdownMenuItem 
-                onClick={() => setDeleteId(product.id)}
+                onClick={(e) => {
+                  e.preventDefault()
+                  setDeleteId(product.id)
+                }}
                 className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
               >
                 <Trash className="mr-2 h-4 w-4" />
@@ -276,7 +282,7 @@ function ProductsContent() {
             Manage your store items, stock levels, and pricing catalog.
           </p>
         </div>
-        <Button render={<Link href="/admin/products/new" />} className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/20">
+        <Button onClick={() => router.push("/admin/products/new")} className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/20">
           <Plus className="mr-2 h-4 w-4" />
           Add Product
         </Button>

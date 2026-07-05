@@ -147,7 +147,7 @@ export default function EditProductPage() {
         <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-400">
           {error}
         </div>
-        <Button variant="outline" render={<Link href="/admin/products" />} className="border-slate-800 text-slate-300">
+        <Button variant="outline" onClick={() => router.push("/admin/products")} className="border-slate-800 text-slate-300">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to products
         </Button>
       </div>
@@ -171,7 +171,7 @@ export default function EditProductPage() {
     <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Page Header */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" render={<Link href="/admin/products" />} className="border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-300 hover:text-white transition-all shadow-sm">
+        <Button variant="outline" size="icon" onClick={() => router.push("/admin/products")} className="border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-300 hover:text-white transition-all shadow-sm">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -254,7 +254,7 @@ export default function EditProductPage() {
                   </div>
 
                   <div className="flex justify-end gap-4 pt-4">
-                    <Button type="button" variant="outline" disabled={loading} render={<Link href="/admin/products" />} className="border-slate-850 bg-transparent text-slate-300 hover:bg-slate-800">
+                    <Button type="button" variant="outline" disabled={loading} onClick={() => router.push("/admin/products")} className="border-slate-850 bg-transparent text-slate-300 hover:bg-slate-800">
                       Cancel
                     </Button>
                     <Button type="submit" disabled={loading} className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/20">
