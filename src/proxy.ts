@@ -154,6 +154,7 @@ export async function proxy(request: NextRequest) {
       Object.entries(rateLimitHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);
       });
+      setSecurityHeaders(response);
       return response;
     } catch {
       // For admin routes, redirect to login page on invalid token
