@@ -6,7 +6,7 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Loader2, ArrowLeft, Image as ImageIcon, Eye } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -48,6 +48,12 @@ export default function EditProductPage() {
       stock: 0,
     },
   })
+
+  // Watch fields for live preview
+  const watchedName = form.watch("name")
+  const watchedDescription = form.watch("description")
+  const watchedPrice = form.watch("price")
+  const watchedStock = form.watch("stock")
 
   useEffect(() => {
     let cancelled = false
@@ -128,8 +134,9 @@ export default function EditProductPage() {
 
   if (fetching) {
     return (
-      <div className="flex h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-2">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        <span className="text-sm text-slate-500">Fetching product details...</span>
       </div>
     )
   }
@@ -137,106 +144,181 @@ export default function EditProductPage() {
   if (error && !form.getValues().name) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
+        <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-400">
           {error}
         </div>
-        <Button variant="outline" render={<Link href="/admin/products" />}>
+        <Button variant="outline" render={<Link href="/admin/products" />} className="border-slate-800 text-slate-300">
           <ArrowLeft className="mr-2 h-4 w-4" /> Back to products
         </Button>
       </div>
     )
   }
 
+  // Stock status styling for live preview
+  const previewStockVal = Number(watchedStock) || 0
+  let previewStockBadge = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+  let previewStockText = `${previewStockVal} In Stock`
+
+  if (previewStockVal === 0) {
+    previewStockBadge = "bg-rose-500/10 text-rose-400 border-rose-500/20"
+    previewStockText = "Out of Stock"
+  } else if (previewStockVal <= 10) {
+    previewStockBadge = "bg-amber-500/10 text-amber-400 border-amber-500/20"
+    previewStockText = `Low Stock (${previewStockVal})`
+  }
+
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6">
+      {/* Page Header */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" render={<Link href="/admin/products" />}>
+        <Button variant="outline" size="icon" render={<Link href="/admin/products" />} className="border-slate-800 hover:bg-slate-800 text-slate-300">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-3xl font-bold tracking-tight">Edit Product</h1>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+            Edit Product
+          </h1>
+          <p className="text-sm text-slate-400">Modify the specifications or details of the selected item.</p>
+        </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Product Details</CardTitle>
-          <CardDescription>
-            Update the details for the product.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="E.g., Wireless Mouse" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+      <div className="grid gap-6 md:grid-cols-5">
+        {/* Form Container */}
+        <div className="md:col-span-3">
+          <Card className="bg-slate-900/40 border-slate-800 text-slate-200">
+            <CardHeader>
+              <CardTitle className="text-slate-100">Product Specifications</CardTitle>
+              <CardDescription className="text-slate-400">
+                Update the name, price, stock, and description details.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-300">Name</FormLabel>
+                        <FormControl>
+                          <Input placeholder="E.g., Wireless Mouse" {...field} className="bg-slate-950/40 border-slate-800 text-slate-200 focus-visible:ring-indigo-500" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Description</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Short description of the product" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                  <FormField
+                    control={form.control}
+                    name="description"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-slate-300">Description</FormLabel>
+                        <FormControl>
+                          <Input placeholder="E.g., High performance ergonomic wireless mouse" {...field} className="bg-slate-950/40 border-slate-800 text-slate-200 focus-visible:ring-indigo-500" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
 
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="price"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Price ($)</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.01" min="0" {...field} value={field.value as string | number} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="price"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-300">Price ($)</FormLabel>
+                          <FormControl>
+                            <Input type="number" step="0.01" min="0" {...field} value={field.value as string | number} className="bg-slate-950/40 border-slate-800 text-slate-200 focus-visible:ring-indigo-500" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
 
-                <FormField
-                  control={form.control}
-                  name="stock"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Stock</FormLabel>
-                      <FormControl>
-                        <Input type="number" min="0" {...field} value={field.value as string | number} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <FormField
+                      control={form.control}
+                      name="stock"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-slate-300">Stock</FormLabel>
+                          <FormControl>
+                            <Input type="number" min="0" {...field} value={field.value as string | number} className="bg-slate-950/40 border-slate-800 text-slate-200 focus-visible:ring-indigo-500" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-4 pt-4">
+                    <Button type="button" variant="outline" disabled={loading} render={<Link href="/admin/products" />} className="border-slate-850 bg-transparent text-slate-300 hover:bg-slate-800">
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={loading} className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/20">
+                      {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save Changes
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Live Preview Card */}
+        <div className="md:col-span-2 space-y-3">
+          <div className="flex items-center gap-1.5 text-xs text-slate-400 font-semibold uppercase tracking-wider pl-1">
+            <Eye className="h-3.5 w-3.5 text-indigo-400" />
+            Live Store Preview
+          </div>
+
+          <div className="rounded-xl border border-slate-800 bg-slate-900/30 p-6 shadow-2xl relative overflow-hidden flex flex-col justify-between h-[360px] bg-gradient-to-br from-slate-900 to-indigo-950/20 backdrop-blur-md">
+            {/* Geometric Glow Decoration */}
+            <div className="absolute top-0 right-0 h-32 w-32 rounded-full bg-indigo-500/10 blur-3xl" />
+            <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl" />
+
+            {/* Media Placeholder */}
+            <div className="h-32 w-full rounded-lg bg-slate-950/60 border border-slate-850 flex items-center justify-center text-slate-600 select-none relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-violet-500/5 opacity-50" />
+              <div className="flex flex-col items-center gap-1.5 relative z-10">
+                <ImageIcon className="h-7 w-7 text-slate-500" />
+                <span className="text-[10px] tracking-wider uppercase font-semibold text-slate-500">Image Preview</span>
               </div>
+            </div>
 
-              <div className="flex justify-end gap-4 pt-4">
-                <Button type="button" variant="outline" disabled={loading} render={<Link href="/admin/products" />}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={loading}>
-                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
-                </Button>
+            {/* Title & Desc */}
+            <div className="space-y-2 mt-4">
+              <div className="flex items-start justify-between gap-4">
+                <h3 className="font-bold text-slate-100 text-lg leading-tight truncate">
+                  {watchedName || "Product Title"}
+                </h3>
+                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-semibold border ${previewStockBadge} shrink-0`}>
+                  {previewStockText}
+                </span>
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+              <p className="text-xs text-slate-400 line-clamp-2 h-8">
+                {watchedDescription || "Product description will automatically render here..."}
+              </p>
+            </div>
+
+            {/* Price & Buy Simulation */}
+            <div className="flex items-center justify-between border-t border-slate-850 pt-4 mt-2">
+              <div>
+                <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Price</span>
+                <span className="text-xl font-bold text-indigo-400">
+                  ${(Number(watchedPrice) || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                </span>
+              </div>
+              <Button type="button" disabled className="bg-slate-800 text-slate-400 border border-slate-700/40 select-none pointer-events-none text-xs h-8 px-4 rounded-lg">
+                Buy Item
+              </Button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

@@ -3,8 +3,9 @@
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { MoreHorizontal, Plus, Search, Trash, Edit, Loader2 } from "lucide-react"
+import { MoreHorizontal, Plus, Search, Trash, Edit, Loader2, Package, CircleAlert, DollarSign, Layers } from "lucide-react"
 import { toast } from "sonner"
+import { cn } from "@/lib/utils"
 import {
   flexRender,
   getCoreRowModel,
@@ -128,7 +129,7 @@ function ProductsContent() {
     params.set("page", pageNum.toString())
     const q = searchTerm !== undefined ? searchTerm : search
     if (q) params.set("search", q)
-    router.push(`/admin/products?${params.toString()}`)
+    router.push(`/admin/products?${params.toString()}`);
   }
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
@@ -172,23 +173,57 @@ function ProductsContent() {
     }
   }
 
+  // Compute local stats for visual wow factor
+  const totalProductsCount = pagination?.total || products.length
+  const totalValue = products.reduce((acc, p) => acc + (p.price * p.stock), 0)
+  const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 10).length
+  const outOfStockCount = products.filter(p => p.stock === 0).length
+
   const columns: ColumnDef<Product>[] = [
     {
       accessorKey: "name",
-      header: "Name",
+      header: "Product Name",
+      cell: ({ row }) => (
+        <span className="font-semibold text-slate-200">{row.getValue("name")}</span>
+      )
     },
     {
       accessorKey: "description",
       header: "Description",
+      cell: ({ row }) => (
+        <span className="text-slate-400 max-w-md block truncate">{row.getValue("description")}</span>
+      )
     },
     {
       accessorKey: "price",
       header: "Price",
-      cell: ({ row }) => `$${Number(row.getValue("price")).toFixed(2)}`,
+      cell: ({ row }) => (
+        <span className="font-medium text-slate-200">${Number(row.getValue("price")).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+      )
     },
     {
       accessorKey: "stock",
-      header: "Stock",
+      header: "Stock Status",
+      cell: ({ row }) => {
+        const stock = Number(row.getValue("stock"))
+        let badgeStyle = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+        let statusText = `${stock} in stock`
+
+        if (stock === 0) {
+          badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/20"
+          statusText = "Out of Stock"
+        } else if (stock <= 10) {
+          badgeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/20"
+          statusText = `Low Stock (${stock})`
+        }
+
+        return (
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${badgeStyle}`}>
+            <span className={cn("mr-1.5 h-1.5 w-1.5 rounded-full", stock === 0 ? "bg-rose-400" : stock <= 10 ? "bg-amber-400" : "bg-emerald-400")} />
+            {statusText}
+          </span>
+        )
+      }
     },
     {
       id: "actions",
@@ -197,22 +232,24 @@ function ProductsContent() {
         const product = row.original
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
+            <DropdownMenuTrigger render={
+              <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40" />
+            }>
               <span className="sr-only">Open menu</span>
               <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
+              <DropdownMenuLabel className="text-slate-400">Actions</DropdownMenuLabel>
               <DropdownMenuItem render={<Link href={`/admin/products/${product.id}/edit`} />}>
                 <Edit className="mr-2 h-4 w-4" />
-                Edit
+                Edit Product
               </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={() => setDeleteId(product.id)}
-                className="text-destructive focus:text-destructive cursor-pointer"
+                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
               >
                 <Trash className="mr-2 h-4 w-4" />
-                Delete
+                Delete Product
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -228,45 +265,96 @@ function ProductsContent() {
   })
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
-        <Button render={<Link href="/admin/products/new" />}>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-white to-slate-400 bg-clip-text text-transparent">
+            Products Catalog
+          </h1>
+          <p className="text-sm text-slate-400">
+            Manage your store items, stock levels, and pricing catalog.
+          </p>
+        </div>
+        <Button render={<Link href="/admin/products/new" />} className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/20">
           <Plus className="mr-2 h-4 w-4" />
-          New Product
+          Add Product
         </Button>
       </div>
 
-      <div className="flex items-center py-4">
+      {/* Stats Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-400">Total Products</p>
+            <Package className="h-4 w-4 text-indigo-400" />
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{totalProductsCount}</p>
+          <span className="text-[10px] text-slate-500">Items registered in system</span>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-400">Page Stock Value</p>
+            <DollarSign className="h-4 w-4 text-emerald-400" />
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          <span className="text-[10px] text-slate-500">Valuation of current page stock</span>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-400">Low Stock Warning</p>
+            <CircleAlert className="h-4 w-4 text-amber-400" />
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{lowStockCount}</p>
+          <span className="text-[10px] text-slate-500">Stock levels between 1 and 10</span>
+        </div>
+
+        <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-slate-400">Out of Stock</p>
+            <Layers className="h-4 w-4 text-rose-400" />
+          </div>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{outOfStockCount}</p>
+          <span className="text-[10px] text-slate-500">Stock completely depleted</span>
+        </div>
+      </div>
+
+      {/* Toolbar */}
+      <div className="flex items-center justify-between">
         <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
-          <Input
-            type="search"
-            name="search"
-            placeholder="Search products..."
-            defaultValue={search}
-            className="w-full"
-          />
-          <Button type="submit" variant="secondary">
-            <Search className="h-4 w-4" />
-            <span className="sr-only">Search</span>
+          <div className="relative w-full">
+            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+            <Input
+              type="search"
+              name="search"
+              placeholder="Search by product name..."
+              defaultValue={search}
+              className="pl-9 bg-slate-900/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+            />
+          </div>
+          <Button type="submit" variant="secondary" className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60">
+            Search
           </Button>
         </form>
       </div>
 
       {error && (
-        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
+        <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-400">
           {error}
         </div>
       )}
 
-      <div className="rounded-md border bg-card">
+      {/* Products Table */}
+      <div className="rounded-xl border border-slate-800 bg-slate-900/10 overflow-hidden shadow-2xl">
         <Table>
-          <TableHeader>
+          <TableHeader className="bg-slate-900/40 border-b border-slate-800">
             {table.getHeaderGroups().map((headerGroup) => (
-              <TableRow key={headerGroup.id}>
+              <TableRow key={headerGroup.id} className="border-b border-slate-800 hover:bg-transparent">
                 {headerGroup.headers.map((header) => {
                   return (
-                    <TableHead key={header.id}>
+                    <TableHead key={header.id} className="text-slate-400 font-medium">
                       {header.isPlaceholder
                         ? null
                         : flexRender(
@@ -282,8 +370,11 @@ function ProductsContent() {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                <TableCell colSpan={columns.length} className="h-48 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+                    <span className="text-sm text-slate-500">Loading catalog...</span>
+                  </div>
                 </TableCell>
               </TableRow>
             ) : table.getRowModel().rows?.length ? (
@@ -291,9 +382,10 @@ function ProductsContent() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
+                  className="border-b border-slate-800 hover:bg-slate-800/10 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
+                    <TableCell key={cell.id} className="py-4">
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
                     </TableCell>
                   ))}
@@ -301,8 +393,8 @@ function ProductsContent() {
               ))
             ) : (
               <TableRow>
-                <TableCell colSpan={columns.length} className="h-24 text-center">
-                  No results.
+                <TableCell colSpan={columns.length} className="h-48 text-center text-slate-500">
+                  No products matched your search.
                 </TableCell>
               </TableRow>
             )}
@@ -310,6 +402,7 @@ function ProductsContent() {
         </Table>
       </div>
 
+      {/* Pagination */}
       {!loading && pagination && pagination.totalPages > 1 && (
         <div className="flex items-center justify-end space-x-2 py-4">
           <Button
@@ -317,17 +410,19 @@ function ProductsContent() {
             size="sm"
             onClick={() => navigate(page - 1)}
             disabled={page <= 1}
+            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
           >
             Previous
           </Button>
-          <div className="text-sm text-muted-foreground mx-2">
-            Page {page} of {pagination.totalPages}
+          <div className="text-xs text-slate-500 mx-2">
+            Page <span className="text-slate-300 font-semibold">{page}</span> of <span className="text-slate-300 font-semibold">{pagination.totalPages}</span>
           </div>
           <Button
             variant="outline"
             size="sm"
             onClick={() => navigate(page + 1)}
             disabled={page >= pagination.totalPages}
+            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
           >
             Next
           </Button>
@@ -336,22 +431,22 @@ function ProductsContent() {
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
           <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
+            <AlertDialogTitle className="text-slate-100">Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
               This action cannot be undone. This will permanently delete the product
-              and remove its data from our servers.
+              and remove its data from our database.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel disabled={isDeleting} className="border-slate-800 bg-transparent hover:bg-slate-800 text-slate-300">Cancel</AlertDialogCancel>
             <AlertDialogAction 
               onClick={(e) => {
                 e.preventDefault()
                 handleDeleteConfirm()
               }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-600/10"
               disabled={isDeleting}
             >
               {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
@@ -366,7 +461,12 @@ function ProductsContent() {
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<div className="flex h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
+    <Suspense fallback={
+      <div className="flex h-[50vh] flex-col items-center justify-center gap-2">
+        <Loader2 className="h-8 w-8 animate-spin text-indigo-500" />
+        <span className="text-sm text-slate-500">Loading catalog...</span>
+      </div>
+    }>
       <ProductsContent />
     </Suspense>
   )
