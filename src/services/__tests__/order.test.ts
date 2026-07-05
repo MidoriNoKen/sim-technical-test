@@ -181,7 +181,7 @@ describe("Order Service - deleteOrder()", () => {
     const mockOrderPending = { ...mockOrder, status: "PENDING" };
     vi.mocked(orderRepository.findOrderById).mockResolvedValue(mockOrderPending);
     txMock.product.update = vi.fn().mockResolvedValue({});
-    vi.mocked(orderRepository.deleteOrder).mockResolvedValue(mockOrderPending as any);
+    vi.mocked(orderRepository.deleteOrder).mockResolvedValue(mockOrderPending as unknown as never);
 
     // Act
     await deleteOrder("order-uuid-1", "user-uuid-1");
@@ -200,7 +200,7 @@ describe("Order Service - deleteOrder()", () => {
     const mockOrderCancelled = { ...mockOrder, status: "CANCELLED" };
     vi.mocked(orderRepository.findOrderById).mockResolvedValue(mockOrderCancelled);
     txMock.product.update = vi.fn();
-    vi.mocked(orderRepository.deleteOrder).mockResolvedValue(mockOrderCancelled as any);
+    vi.mocked(orderRepository.deleteOrder).mockResolvedValue(mockOrderCancelled as unknown as never);
 
     // Act
     await deleteOrder("order-uuid-1", "user-uuid-1");
