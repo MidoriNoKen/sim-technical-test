@@ -337,6 +337,101 @@ export const getApiDocs = () => {
             },
           },
         },
+        "/api/orders/{id}": {
+          get: {
+            tags: ["Orders"],
+            summary: "Get detailed order information by ID",
+            security: [{ BearerAuth: [] }],
+            parameters: [
+              {
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string", format: "uuid" },
+              },
+            ],
+            responses: {
+              200: {
+                description: "Order details",
+              },
+              401: {
+                description: "Unauthorized",
+              },
+              404: {
+                description: "Order not found",
+              },
+            },
+          },
+          put: {
+            tags: ["Orders"],
+            summary: "Update order status (e.g. COMPLETED, CANCELLED)",
+            security: [{ BearerAuth: [] }],
+            parameters: [
+              {
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string", format: "uuid" },
+              },
+            ],
+            requestBody: {
+              required: true,
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    required: ["status"],
+                    properties: {
+                      status: {
+                        type: "string",
+                        enum: ["PENDING", "COMPLETED", "CANCELLED"],
+                        example: "COMPLETED",
+                      },
+                    },
+                  },
+                },
+              },
+            },
+            responses: {
+              200: {
+                description: "Order status updated successfully",
+              },
+              400: {
+                description: "Invalid order status",
+              },
+              401: {
+                description: "Unauthorized",
+              },
+              404: {
+                description: "Order not found",
+              },
+            },
+          },
+          delete: {
+            tags: ["Orders"],
+            summary: "Delete an order and restock items",
+            security: [{ BearerAuth: [] }],
+            parameters: [
+              {
+                name: "id",
+                in: "path",
+                required: true,
+                schema: { type: "string", format: "uuid" },
+              },
+            ],
+            responses: {
+              200: {
+                description: "Order deleted successfully",
+              },
+              401: {
+                description: "Unauthorized",
+              },
+              404: {
+                description: "Order not found",
+              },
+            },
+          },
+        },
       },
     },
   });

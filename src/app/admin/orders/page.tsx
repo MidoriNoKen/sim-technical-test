@@ -43,6 +43,7 @@ interface Order {
   id: string
   userId: string
   totalAmount: number
+  status: string
   createdAt: string
   updatedAt: string
   user: {
@@ -207,6 +208,24 @@ function OrdersContent() {
             Rp {Number(row.getValue("totalAmount")).toLocaleString("id-ID")}
           </span>
         ),
+      },
+      {
+        accessorKey: "status",
+        header: "Status",
+        cell: ({ row }) => {
+          const status = (row.getValue("status") as string) || "PENDING"
+          let badgeClass = "bg-amber-500/10 text-amber-400 border-amber-500/20"
+          if (status === "COMPLETED") {
+            badgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+          } else if (status === "CANCELLED") {
+            badgeClass = "bg-rose-500/10 text-rose-400 border-rose-500/20"
+          }
+          return (
+            <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${badgeClass}`}>
+              {status}
+            </span>
+          )
+        },
       },
       {
         id: "actions",
