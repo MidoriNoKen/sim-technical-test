@@ -369,8 +369,7 @@ function OrdersContent() {
                 <TableRow
                   key={row.id}
                   data-state={row.getIsSelected() && "selected"}
-                  className="border-b border-slate-800 hover:bg-slate-800/10 transition-colors cursor-pointer"
-                  onClick={() => router.push(`/admin/orders/${row.original.id}`)}
+                  className="border-b border-slate-800 hover:bg-slate-800/10 transition-colors"
                 >
                   {row.getVisibleCells().map((cell) => (
                     <TableCell key={cell.id} className="py-4">
