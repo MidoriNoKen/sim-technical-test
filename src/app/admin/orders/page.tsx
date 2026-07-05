@@ -356,7 +356,7 @@ function OrdersContent() {
           </TableHeader>
           <TableBody>
             {loading ? (
-              <TableRow>
+              <TableRow className="hover:bg-slate-800/10 transition-colors">
                 <TableCell colSpan={columns.length} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
@@ -379,7 +379,7 @@ function OrdersContent() {
                 </TableRow>
               ))
             ) : (
-              <TableRow>
+              <TableRow className="hover:bg-slate-800/10 transition-colors">
                 <TableCell colSpan={columns.length} className="h-48 text-center text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <ShoppingCart className="h-8 w-8 text-slate-600" />
