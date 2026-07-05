@@ -92,3 +92,128 @@ export async function getAllOrders(params: {
 }) {
   return orderRepository.findAllOrders(params);
 }
+
+export async function getOrderById(orderId: string) {
+  const order = await orderRepository.findOrderById(orderId);
+  if (!order) {
+    throw new AppError("Order not found", 404);
+  }
+  return order;
+}
+
+export async function updateOrderStatus(
+  orderId: string,
+  userId: string,
+  newStatus: string
+) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError("User not found. Please log in again.", 401);
+  }
+
+  const validStatuses = ["PENDING", "COMPLETED", "CANCELLED"];
+  if (!validStatuses.includes(newStatus)) {
+    throw new AppError("Invalid order status", 400);
+  }
+
+  const order = await orderRepository.findOrderById(orderId);
+  if (!order) {
+    throw new AppError("Order not found", 404);
+  }
+
+  if (order.status === newStatus) {
+    return order;
+  }
+
+  await prisma.$transaction(async (tx) => {
+    // 1. If transitioning TO 'CANCELLED', restock the products
+    if (newStatus === "CANCELLED" && order.status !== "CANCELLED") {
+      for (const item of order.orderItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              increment: item.quantity,
+            },
+          },
+        });
+      }
+    }
+
+    // 2. If transitioning FROM 'CANCELLED', decrement the stock
+    if (order.status === "CANCELLED" && newStatus !== "CANCELLED") {
+      for (const item of order.orderItems) {
+        const product = await tx.product.findUnique({
+          where: { id: item.productId },
+        });
+
+        if (!product || product.deletedAt !== null) {
+          throw new AppError(`Product not found or deleted`, 404);
+        }
+
+        const updatedProduct = await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              decrement: item.quantity,
+            },
+          },
+        });
+
+        if (updatedProduct.stock < 0) {
+          throw new AppError(
+            `Insufficient stock to reopen order for product "${product.name}". Requested: ${item.quantity}, available: ${product.stock}`,
+            400
+          );
+        }
+      }
+    }
+
+    // 3. Update the order status
+    return orderRepository.updateOrderStatus(tx, orderId, newStatus);
+  });
+
+  await clearProductCache();
+
+  return orderRepository.findOrderById(orderId);
+}
+
+export async function deleteOrder(orderId: string, userId: string) {
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new AppError("User not found. Please log in again.", 401);
+  }
+
+  const order = await orderRepository.findOrderById(orderId);
+  if (!order) {
+    throw new AppError("Order not found", 404);
+  }
+
+  const result = await prisma.$transaction(async (tx) => {
+    if (order.status !== "CANCELLED") {
+      for (const item of order.orderItems) {
+        await tx.product.update({
+          where: { id: item.productId },
+          data: {
+            stock: {
+              increment: item.quantity,
+            },
+          },
+        });
+      }
+    }
+
+    return orderRepository.deleteOrder(tx, orderId);
+  });
+
+  await clearProductCache();
+
+  return result;
+}
+

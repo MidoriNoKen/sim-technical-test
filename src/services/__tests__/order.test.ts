@@ -31,7 +31,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 // Import service and repository AFTER mocks are declared
-import { createOrder } from "@/services/order.service";
+import { createOrder, updateOrderStatus, deleteOrder } from "@/services/order.service";
 import * as orderRepository from "@/repositories/order.repository";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -125,3 +125,89 @@ describe("Order Service - createOrder()", () => {
     ).rejects.toMatchObject({ statusCode: 404, message: "Product not found" });
   });
 });
+
+describe("Order Service - updateOrderStatus()", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should update status successfully if status is valid and different", async () => {
+    // Arrange
+    const mockOrderPending = { ...mockOrder, status: "PENDING" };
+    const mockOrderCompleted = { ...mockOrder, status: "COMPLETED" };
+    vi.mocked(orderRepository.findOrderById)
+      .mockResolvedValueOnce(mockOrderPending)
+      .mockResolvedValueOnce(mockOrderCompleted);
+    vi.mocked(orderRepository.updateOrderStatus).mockResolvedValue(mockOrderCompleted);
+
+    // Act
+    const result = await updateOrderStatus("order-uuid-1", "user-uuid-1", "COMPLETED");
+
+    // Assert
+    expect(result.status).toBe("COMPLETED");
+  });
+
+  it("should throw AppError 400 if status is invalid", async () => {
+    await expect(
+      updateOrderStatus("order-uuid-1", "user-uuid-1", "INVALID_STATUS")
+    ).rejects.toMatchObject({ statusCode: 400, message: "Invalid order status" });
+  });
+
+  it("should restock items when transitioning to CANCELLED", async () => {
+    // Arrange
+    const mockOrderPending = { ...mockOrder, status: "PENDING" };
+    vi.mocked(orderRepository.findOrderById).mockResolvedValue(mockOrderPending);
+    txMock.product.update = vi.fn().mockResolvedValue({});
+
+    // Act
+    await updateOrderStatus("order-uuid-1", "user-uuid-1", "CANCELLED");
+
+    // Assert
+    expect(txMock.product.update).toHaveBeenCalledOnce();
+    expect(txMock.product.update).toHaveBeenCalledWith({
+      where: { id: "product-uuid-1" },
+      data: { stock: { increment: 2 } },
+    });
+  });
+});
+
+describe("Order Service - deleteOrder()", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should restock items when deleting a non-cancelled order", async () => {
+    // Arrange
+    const mockOrderPending = { ...mockOrder, status: "PENDING" };
+    vi.mocked(orderRepository.findOrderById).mockResolvedValue(mockOrderPending);
+    txMock.product.update = vi.fn().mockResolvedValue({});
+    vi.mocked(orderRepository.deleteOrder).mockResolvedValue(mockOrderPending as any);
+
+    // Act
+    await deleteOrder("order-uuid-1", "user-uuid-1");
+
+    // Assert
+    expect(txMock.product.update).toHaveBeenCalledOnce();
+    expect(txMock.product.update).toHaveBeenCalledWith({
+      where: { id: "product-uuid-1" },
+      data: { stock: { increment: 2 } },
+    });
+    expect(orderRepository.deleteOrder).toHaveBeenCalledOnce();
+  });
+
+  it("should not restock items when deleting an already cancelled order", async () => {
+    // Arrange
+    const mockOrderCancelled = { ...mockOrder, status: "CANCELLED" };
+    vi.mocked(orderRepository.findOrderById).mockResolvedValue(mockOrderCancelled);
+    txMock.product.update = vi.fn();
+    vi.mocked(orderRepository.deleteOrder).mockResolvedValue(mockOrderCancelled as any);
+
+    // Act
+    await deleteOrder("order-uuid-1", "user-uuid-1");
+
+    // Assert
+    expect(txMock.product.update).not.toHaveBeenCalled();
+    expect(orderRepository.deleteOrder).toHaveBeenCalledOnce();
+  });
+});
+

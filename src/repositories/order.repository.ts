@@ -109,3 +109,51 @@ export async function findAllOrders(params: {
     },
   };
 }
+
+export async function findOrderById(orderId: string) {
+  return prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      user: {
+        select: { email: true },
+      },
+      orderItems: {
+        include: {
+          product: {
+            select: {
+              name: true,
+              price: true,
+            },
+          },
+        },
+      },
+    },
+  });
+}
+
+export async function updateOrderStatus(
+  tx: Prisma.TransactionClient,
+  orderId: string,
+  status: string
+) {
+  return tx.order.update({
+    where: { id: orderId },
+    data: { status },
+    include: {
+      orderItems: true,
+    },
+  });
+}
+
+export async function deleteOrder(
+  tx: Prisma.TransactionClient,
+  orderId: string
+) {
+  await tx.orderItem.deleteMany({
+    where: { orderId },
+  });
+  return tx.order.delete({
+    where: { id: orderId },
+  });
+}
+
