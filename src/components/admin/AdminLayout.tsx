@@ -3,7 +3,7 @@
 import React, { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Package, Users, LogOut, Menu, Bell, User, ChevronDown, LayoutDashboard } from "lucide-react"
+import { Package, Users, LogOut, Menu, Bell, User, ChevronDown, LayoutDashboard } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"

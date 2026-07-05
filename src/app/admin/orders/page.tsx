@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma"
-import { Package, Search, ChevronRight, CheckCircle2, Clock } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Package, Search, ChevronRight, CheckCircle2 } from "lucide-react"
+import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 

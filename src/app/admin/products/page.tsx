@@ -2,7 +2,6 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import Link from "next/link"
 import { MoreHorizontal, Plus, Search, Trash, Edit, Loader2, Package, CircleAlert, DollarSign, Layers } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"

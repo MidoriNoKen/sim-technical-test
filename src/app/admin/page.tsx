@@ -23,7 +23,7 @@ export default function AdminDashboard() {
             Dashboard
           </h1>
           <p className="text-sm text-slate-400">
-            Welcome back, here's what's happening today.
+            Welcome back, here&apos;s what&apos;s happening today.
           </p>
         </div>
       </div>

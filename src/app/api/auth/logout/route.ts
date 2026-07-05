@@ -1,8 +1,8 @@
-import { NextRequest } from "next/server";
+
 import { sendResponse } from "@/utils/response";
 import { logger } from "@/utils/logger";
 
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
     const response = sendResponse({
       success: true,
