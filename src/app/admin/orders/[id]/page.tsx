@@ -24,8 +24,15 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { ChevronDown, MoreHorizontal } from "lucide-react"
 
 interface OrderItem {
   id: string
@@ -63,6 +70,7 @@ function OrderDetailContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   async function handleUpdateStatus(status: string) {
     setActionLoading(true)
@@ -213,70 +221,68 @@ function OrderDetailContent() {
         </div>
 
         {/* Action Buttons */}
-        {/* Action Buttons Group */}
-        <div className="inline-flex items-center rounded-xl border border-slate-800 bg-slate-950/40 p-1 shadow-lg backdrop-blur-sm">
-          {order.status === "PENDING" && (
-            <Button
-              onClick={() => handleUpdateStatus("VERIFIED")}
-              disabled={actionLoading}
-              className="bg-violet-600/90 hover:bg-violet-600 text-white font-semibold shadow-md transition-all rounded-lg px-4 h-9 text-xs"
-            >
-              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-              Verify Order
-            </Button>
-          )}
-          {order.status !== "COMPLETED" && order.status !== "CANCELLED" && (
-            <Button
-              onClick={() => handleUpdateStatus("COMPLETED")}
-              disabled={actionLoading}
-              className="bg-emerald-600/90 hover:bg-emerald-600 text-white font-semibold shadow-md transition-all rounded-lg px-4 h-9 text-xs ml-1"
-            >
-              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-3.5 w-3.5" />}
-              Complete Order
-            </Button>
-          )}
-          {order.status !== "CANCELLED" && (
-            <Button
-              onClick={() => handleUpdateStatus("CANCELLED")}
-              disabled={actionLoading}
-              variant="ghost"
-              className="text-rose-400 hover:text-rose-300 hover:bg-rose-950/20 font-semibold transition-all rounded-lg px-4 h-9 text-xs ml-1 border border-rose-900/30"
-            >
-              Cancel Order
-            </Button>
-          )}
-          
-          <AlertDialog>
-            <AlertDialogTrigger render={
+        {/* Action Buttons Dropdown */}
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger render={
               <Button
                 disabled={actionLoading}
-                variant="ghost"
-                className="text-slate-400 hover:text-rose-400 hover:bg-rose-950/20 font-semibold transition-all rounded-lg px-4 h-9 text-xs ml-1 border border-slate-800"
+                className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 font-semibold shadow-md flex items-center gap-1.5"
               />
             }>
-              <Trash2 className="mr-1.5 h-3.5 w-3.5" />
-              Delete Order
-            </AlertDialogTrigger>
-            <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-              <AlertDialogHeader>
-                <AlertDialogTitle className="text-slate-100">Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription className="text-slate-400">
-                  This action cannot be undone. This will permanently delete this order and restock the products.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel className="border-slate-800 bg-slate-800/50 text-slate-300 hover:bg-slate-850">
-                  Cancel
-                </AlertDialogCancel>
-                <AlertDialogAction
-                  onClick={handleDeleteOrder}
-                  className="bg-rose-600 hover:bg-rose-700 text-white"
-                >
-                  Delete
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              {actionLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Manage Order"}
+              <ChevronDown className="h-4 w-4 opacity-75" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200 w-48">
+              <DropdownMenuLabel className="text-slate-400">Order Decisions</DropdownMenuLabel>
+              
+              {order.status === "PENDING" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("VERIFIED")}
+                    className="text-blue-400 focus:text-blue-300 focus:bg-blue-950/30 cursor-pointer font-medium"
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Verify Order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("CANCELLED")}
+                    className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer font-medium"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Cancel Order
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              {order.status === "VERIFIED" && (
+                <>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("COMPLETED")}
+                    className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-950/30 cursor-pointer font-medium"
+                  >
+                    <Check className="mr-2 h-4 w-4" />
+                    Complete Order
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleUpdateStatus("CANCELLED")}
+                    className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer font-medium"
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Cancel Order
+                  </DropdownMenuItem>
+                </>
+              )}
+
+              <DropdownMenuItem
+                onClick={() => setIsDeleteDialogOpen(true)}
+                className="text-slate-400 focus:text-slate-200 focus:bg-slate-800/40 cursor-pointer font-medium"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete Order
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
