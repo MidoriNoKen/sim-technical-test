@@ -264,7 +264,9 @@ export default function NewOrderPage() {
                           onValueChange={(value: string) => updateProduct(index, value)}
                         >
                           <SelectTrigger className="w-full bg-slate-950/40 border-slate-800 text-slate-200 focus:ring-indigo-500">
-                            <SelectValue placeholder="Select a product" />
+                            <SelectValue placeholder="Select a product">
+                              {item.productName}
+                            </SelectValue>
                           </SelectTrigger>
                           <SelectContent className="bg-slate-900 border-slate-800 text-slate-200">
                             {products.map((product) => (

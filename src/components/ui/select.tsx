@@ -121,12 +121,12 @@ export function SelectItem({ value, disabled, children, className, ...props }: S
   )
 }
 
-export function SelectValue({ placeholder }: { placeholder?: string }) {
+export function SelectValue({ placeholder, children }: { placeholder?: string; children?: React.ReactNode }) {
   const { value } = React.useContext(SelectContext)
   
   return (
     <span data-slot="select-value" className="line-clamp-1">
-      {value || placeholder}
+      {children || value || placeholder}
     </span>
   )
 }
