@@ -14,13 +14,14 @@ enum Role {
 }
 
 model User {
-  id        String   @id @default(uuid()) @db.Uuid
-  email     String   @unique
-  password  String
-  role      Role     @default(CUSTOMER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  orders    Order[]
+  id             String   @id @default(uuid()) @db.Uuid
+  email          String   @unique
+  password       String
+  role           Role     @default(CUSTOMER)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  orders         Order[]  @relation("OrderCustomer")
+  verifiedOrders Order[]  @relation("OrderVerifier")
 
   @@index([email])
 }
@@ -41,29 +42,32 @@ model Product {
 }
 
 model Order {
-  id          String      @id @default(uuid()) @db.Uuid
-  userId      String      @db.Uuid
-  totalAmount Int
-  status      String      @default("PENDING")
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @db.Uuid
+  totalAmount  Int
+  status       String   @default("PENDING")
+  verifiedById String?  @db.Uuid
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 
-  user        User        @relation(fields: [userId], references: [id])
-  orderItems  OrderItem[]
+  user       User        @relation("OrderCustomer", fields: [userId], references: [id])
+  verifiedBy User?       @relation("OrderVerifier", fields: [verifiedById], references: [id])
+  orderItems OrderItem[]
 
   @@index([userId])
+  @@index([verifiedById])
   @@index([createdAt])
 }
 
 model OrderItem {
-  id              String  @id @default(uuid()) @db.Uuid
-  orderId         String  @db.Uuid
-  productId       String  @db.Uuid
+  id              String @id @default(uuid()) @db.Uuid
+  orderId         String @db.Uuid
+  productId       String @db.Uuid
   quantity        Int
   priceAtPurchase Int
 
-  order           Order   @relation(fields: [orderId], references: [id])
-  product         Product @relation(fields: [productId], references: [id])
+  order   Order   @relation(fields: [orderId], references: [id])
+  product Product @relation(fields: [productId], references: [id])
 
   @@index([orderId])
   @@index([productId])

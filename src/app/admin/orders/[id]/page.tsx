@@ -48,6 +48,9 @@ interface Order {
   user: {
     email: string
   }
+  verifiedBy?: {
+    email: string
+  }
   orderItems: OrderItem[]
 }
 
@@ -221,6 +224,16 @@ function OrderDetailContent() {
               Complete Order
             </Button>
           )}
+          {order.status === "PENDING" && (
+            <Button
+              onClick={() => handleUpdateStatus("VERIFIED")}
+              disabled={actionLoading}
+              className="bg-violet-600 hover:bg-violet-700 text-white font-semibold shadow-md shadow-violet-900/20"
+            >
+              {actionLoading ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Check className="mr-1.5 h-4 w-4" />}
+              Verify Order
+            </Button>
+          )}
           {order.status !== "CANCELLED" && (
             <Button
               onClick={() => handleUpdateStatus("CANCELLED")}
@@ -290,6 +303,8 @@ function OrderDetailContent() {
                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold border ${
                   order.status === "COMPLETED" 
                     ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+                    : order.status === "VERIFIED"
+                    ? "bg-violet-500/10 text-violet-400 border-violet-500/20"
                     : order.status === "CANCELLED"
                     ? "bg-rose-500/10 text-rose-400 border-rose-500/20"
                     : "bg-amber-500/10 text-amber-400 border-amber-500/20"
@@ -347,6 +362,15 @@ function OrderDetailContent() {
                   {order.userId.split("-")[0].toUpperCase()}
                 </span>
               </div>
+
+              {order.verifiedBy && (
+                <div className="flex items-center justify-between text-sm mt-3 pt-3 border-t border-slate-800/60">
+                  <span className="text-slate-400">Verified By (Admin)</span>
+                  <span className="text-violet-300 font-medium truncate max-w-[200px]">
+                    {order.verifiedBy.email}
+                  </span>
+                </div>
+              )}
 
               <div className="border-t border-slate-800/60 pt-3 space-y-2">
                 <div className="flex items-center gap-2 text-sm">
