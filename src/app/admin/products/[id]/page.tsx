@@ -3,7 +3,7 @@
 import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Package, Tag, Layers, Clock, CalendarDays, Edit, CircleAlert } from "lucide-react"
-import { toast } from "sonner"
+
 import { Button } from "@/components/ui/button"
 
 interface Product {
