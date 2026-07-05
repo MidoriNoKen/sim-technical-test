@@ -55,3 +55,57 @@ export async function findOrdersByUserId(userId: string) {
     },
   });
 }
+
+export async function findAllOrders(params: {
+  page: number;
+  limit: number;
+  search?: string;
+}) {
+  const { page, limit, search } = params;
+  const skip = (page - 1) * limit;
+
+  const where: Prisma.OrderWhereInput = {};
+
+  if (search) {
+    where.OR = [
+      { user: { email: { contains: search, mode: "insensitive" } } },
+    ];
+  }
+
+  const [data, total] = await Promise.all([
+    prisma.order.findMany({
+      where,
+      skip,
+      take: limit,
+      include: {
+        user: {
+          select: { email: true },
+        },
+        orderItems: {
+          include: {
+            product: {
+              select: {
+                name: true,
+                price: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    }),
+    prisma.order.count({ where }),
+  ]);
+
+  return {
+    data,
+    pagination: {
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    },
+  };
+}

@@ -44,10 +44,12 @@ export default function NewProductPage() {
   })
 
   // Watch fields for live preview
+  /* eslint-disable react-hooks/incompatible-library */
   const watchedName = form.watch("name")
   const watchedDescription = form.watch("description")
   const watchedPrice = form.watch("price")
   const watchedStock = form.watch("stock")
+  /* eslint-enable react-hooks/incompatible-library */
 
   async function onSubmit(data: ProductFormValues) {
     setLoading(true)

@@ -75,3 +75,11 @@ export async function createOrder(
 export async function getUserOrders(userId: string) {
   return orderRepository.findOrdersByUserId(userId);
 }
+
+export async function getAllOrders(params: {
+  page: number;
+  limit: number;
+  search?: string;
+}) {
+  return orderRepository.findAllOrders(params);
+}

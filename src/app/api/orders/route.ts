@@ -87,6 +87,31 @@ export async function GET(request: NextRequest) {
       );
     }
 
+    const userRole = request.headers.get("x-user-role");
+
+    // Admin can see all orders with pagination
+    if (userRole === "ADMIN") {
+      const { searchParams } = new URL(request.url);
+      const page = parseInt(searchParams.get("page") || "1", 10);
+      const limit = parseInt(searchParams.get("limit") || "10", 10);
+      const search = searchParams.get("search") || undefined;
+
+      const result = await orderService.getAllOrders({ page, limit, search });
+
+      return sendResponse(
+        {
+          success: true,
+          data: result.data,
+          message: "Orders fetched successfully",
+          ...(result.pagination && {
+            pagination: result.pagination,
+          }),
+        },
+        200
+      );
+    }
+
+    // Regular user can only see their own orders
     const orders = await orderService.getUserOrders(userId);
 
     return sendResponse(
