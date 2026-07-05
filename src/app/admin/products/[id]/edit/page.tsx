@@ -1,249 +1,242 @@
-"use client";
+"use client"
 
-import { useEffect, useState, FormEvent } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useEffect, useState } from "react"
+import { useRouter, useParams } from "next/navigation"
+import Link from "next/link"
+import { useForm } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { z } from "zod"
+import { Loader2, ArrowLeft } from "lucide-react"
+import { toast } from "sonner"
 
-interface ProductFormData {
-  name: string;
-  description: string;
-  price: string;
-  stock: string;
-}
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form"
+
+const productSchema = z.object({
+  name: z.string().min(2, "Name must be at least 2 characters"),
+  description: z.string().min(5, "Description must be at least 5 characters"),
+  price: z.coerce.number().positive("Price must be a positive number"),
+  stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
+})
+
+type ProductFormValues = z.infer<typeof productSchema>
 
 export default function EditProductPage() {
-  const router = useRouter();
-  const params = useParams();
-  const id = params.id as string;
+  const router = useRouter()
+  const params = useParams()
+  const id = params.id as string
 
-  const [formData, setFormData] = useState<ProductFormData>({
-    name: "",
-    description: "",
-    price: "",
-    stock: "",
-  });
-  const [loading, setLoading] = useState(false);
-  const [fetching, setFetching] = useState(true);
-  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false)
+  const [fetching, setFetching] = useState(true)
+  const [error, setError] = useState("")
+
+  const form = useForm({
+    resolver: zodResolver(productSchema),
+    defaultValues: {
+      name: "",
+      description: "",
+      price: 0,
+      stock: 0,
+    },
+  })
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
 
     async function fetchProduct() {
       try {
         const res = await fetch(`/api/products/${id}`, {
           credentials: "include",
-        });
+        })
 
-        if (cancelled) return;
+        if (cancelled) return
 
         if (res.status === 401) {
-          router.push("/login?redirect=/admin/products");
-          return;
+          router.push("/login?redirect=/admin/products")
+          return
         }
 
-        const data = await res.json();
+        const data = await res.json()
 
-        if (cancelled) return;
+        if (cancelled) return
 
         if (!res.ok || !data.success) {
-          setError(data.message || "Failed to fetch product");
-          setFetching(false);
-          return;
+          setError(data.message || "Failed to fetch product")
+          setFetching(false)
+          return
         }
 
-        const product = data.data;
-        setFormData({
+        const product = data.data
+        form.reset({
           name: product.name || "",
           description: product.description || "",
-          price: product.price?.toString() || "",
-          stock: product.stock?.toString() || "",
-        });
+          price: product.price ? Number(product.price) : 0,
+          stock: product.stock ? Number(product.stock) : 0,
+        })
       } catch {
         if (!cancelled) {
-          setError("Network error. Please try again.");
+          setError("Network error. Please try again.")
         }
       } finally {
         if (!cancelled) {
-          setFetching(false);
+          setFetching(false)
         }
       }
     }
 
-    fetchProduct();
+    fetchProduct()
 
     return () => {
-      cancelled = true;
-    };
-  }, [id, router]);
+      cancelled = true
+    }
+  }, [id, router, form])
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
-
+  async function onSubmit(data: ProductFormValues) {
+    setLoading(true)
     try {
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          name: formData.name,
-          description: formData.description,
-          price: parseFloat(formData.price),
-          stock: parseInt(formData.stock, 10),
-        }),
-      });
+        body: JSON.stringify(data),
+      })
 
-      const data = await res.json();
+      const resData = await res.json()
 
-      if (!res.ok || !data.success) {
-        setError(data.message || "Failed to update product");
-        setLoading(false);
-        return;
+      if (!res.ok || !resData.success) {
+        toast.error(resData.message || "Failed to update product")
+        return
       }
 
-      router.push("/admin/products");
+      toast.success("Product updated successfully")
+      router.push("/admin/products")
     } catch {
-      setError("Network error. Please try again.");
-      setLoading(false);
+      toast.error("Network error. Please try again.")
+    } finally {
+      setLoading(false)
     }
   }
 
   if (fetching) {
     return (
-      <p style={{ color: "#666", textAlign: "center", padding: "2rem" }}>
-        Loading product...
-      </p>
-    );
+      <div className="flex h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
-  if (error && !formData.name) {
+  if (error && !form.getValues().name) {
     return (
-      <div>
-        <div style={{ padding: "1rem", background: "#ffe0e0", color: "#c00", borderRadius: "4px", marginBottom: "1rem" }}>
+      <div className="max-w-2xl mx-auto space-y-6">
+        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
           {error}
         </div>
-        <a href="/admin/products" style={{ color: "#0070f3" }}>Back to products</a>
+        <Button variant="outline" render={<Link href="/admin/products" />}>
+          <ArrowLeft className="mr-2 h-4 w-4" /> Back to products
+        </Button>
       </div>
-    );
+    )
   }
 
   return (
-    <div>
-      <h1 style={{ color: "#333", fontSize: "1.5rem", marginBottom: "1.5rem" }}>Edit Product</h1>
+    <div className="max-w-2xl mx-auto space-y-6">
+      <div className="flex items-center gap-4">
+        <Button variant="outline" size="icon" render={<Link href="/admin/products" />}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <h1 className="text-3xl font-bold tracking-tight">Edit Product</h1>
+      </div>
 
-      <form
-        onSubmit={handleSubmit}
-        style={{
-          background: "#fff",
-          padding: "1.5rem",
-          borderRadius: "4px",
-          maxWidth: "500px",
-        }}
-      >
-        <div style={{ marginBottom: "1rem" }}>
-          <label htmlFor="name" style={{ display: "block", marginBottom: "0.5rem", color: "#555" }}>
-            Name
-          </label>
-          <input
-            id="name"
-            type="text"
-            value={formData.name}
-            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            required
-            style={inputStyle}
-          />
-        </div>
+      <Card>
+        <CardHeader>
+          <CardTitle>Product Details</CardTitle>
+          <CardDescription>
+            Update the details for the product.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="E.g., Wireless Mouse" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label htmlFor="description" style={{ display: "block", marginBottom: "0.5rem", color: "#555" }}>
-            Description
-          </label>
-          <textarea
-            id="description"
-            value={formData.description}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-            required
-            rows={3}
-            style={{ ...inputStyle, resize: "vertical" }}
-          />
-        </div>
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Short description of the product" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label htmlFor="price" style={{ display: "block", marginBottom: "0.5rem", color: "#555" }}>
-            Price
-          </label>
-          <input
-            id="price"
-            type="number"
-            step="0.01"
-            min="0"
-            value={formData.price}
-            onChange={(e) => setFormData({ ...formData, price: e.target.value })}
-            required
-            style={inputStyle}
-          />
-        </div>
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="price"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Price ($)</FormLabel>
+                      <FormControl>
+                        <Input type="number" step="0.01" min="0" {...field} value={field.value as string | number} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-        <div style={{ marginBottom: "1rem" }}>
-          <label htmlFor="stock" style={{ display: "block", marginBottom: "0.5rem", color: "#555" }}>
-            Stock
-          </label>
-          <input
-            id="stock"
-            type="number"
-            min="0"
-            value={formData.stock}
-            onChange={(e) => setFormData({ ...formData, stock: e.target.value })}
-            required
-            style={inputStyle}
-          />
-        </div>
+                <FormField
+                  control={form.control}
+                  name="stock"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Stock</FormLabel>
+                      <FormControl>
+                        <Input type="number" min="0" {...field} value={field.value as string | number} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
 
-        {error && (
-          <p style={{ color: "red", marginBottom: "1rem", fontSize: "0.9rem" }}>{error}</p>
-        )}
-
-        <div style={{ display: "flex", gap: "0.5rem" }}>
-          <button
-            type="submit"
-            disabled={loading}
-            style={{
-              padding: "0.5rem 1rem",
-              background: loading ? "#999" : "#0070f3",
-              color: "#fff",
-              border: "none",
-              borderRadius: "4px",
-              cursor: loading ? "not-allowed" : "pointer",
-              fontSize: "0.9rem",
-            }}
-          >
-            {loading ? "Saving..." : "Save Changes"}
-          </button>
-          <a
-            href="/admin/products"
-            style={{
-              padding: "0.5rem 1rem",
-              background: "#f0f0f0",
-              color: "#333",
-              border: "1px solid #ddd",
-              borderRadius: "4px",
-              textDecoration: "none",
-              fontSize: "0.9rem",
-            }}
-          >
-            Cancel
-          </a>
-        </div>
-      </form>
+              <div className="flex justify-end gap-4 pt-4">
+                <Button type="button" variant="outline" disabled={loading} render={<Link href="/admin/products" />}>
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={loading}>
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
     </div>
-  );
+  )
 }
-
-const inputStyle: React.CSSProperties = {
-  width: "100%",
-  padding: "0.5rem",
-  border: "1px solid #ddd",
-  borderRadius: "4px",
-  fontSize: "0.9rem",
-};

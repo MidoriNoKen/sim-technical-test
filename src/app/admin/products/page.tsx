@@ -1,314 +1,373 @@
-"use client";
+"use client"
 
-import { Suspense, useEffect, useState } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useState } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { MoreHorizontal, Plus, Search, Trash, Edit, Loader2 } from "lucide-react"
+import { toast } from "sonner"
+import {
+  flexRender,
+  getCoreRowModel,
+  useReactTable,
+  ColumnDef,
+} from "@tanstack/react-table"
+
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Product {
-  id: string;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
+  id: string
+  name: string
+  description: string
+  price: number
+  stock: number
 }
 
 interface Pagination {
-  total: number;
-  page: number;
-  limit: number;
-  totalPages: number;
+  total: number
+  page: number
+  limit: number
+  totalPages: number
 }
 
 function ProductsContent() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
+  const router = useRouter()
+  const searchParams = useSearchParams()
 
-  const [products, setProducts] = useState<Product[]>([]);
-  const [pagination, setPagination] = useState<Pagination | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+  const [products, setProducts] = useState<Product[]>([])
+  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState("")
 
-  const page = parseInt(searchParams.get("page") || "1", 10);
-  const search = searchParams.get("search") || "";
+  const [deleteId, setDeleteId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  const page = parseInt(searchParams.get("page") || "1", 10)
+  const search = searchParams.get("search") || ""
 
   useEffect(() => {
-    let cancelled = false;
+    let cancelled = false
 
     async function fetchProducts() {
-      setLoading(true);
-      setError("");
+      setLoading(true)
+      setError("")
       try {
-        const params = new URLSearchParams();
-        params.set("page", page.toString());
-        params.set("limit", "10");
-        if (search) params.set("search", search);
+        const params = new URLSearchParams()
+        params.set("page", page.toString())
+        params.set("limit", "10")
+        if (search) params.set("search", search)
 
         const res = await fetch(`/api/products?${params.toString()}`, {
           credentials: "include",
-        });
+        })
 
-        if (cancelled) return;
+        if (cancelled) return
 
         if (res.status === 401) {
-          router.push("/login?redirect=/admin/products");
-          return;
+          router.push("/login?redirect=/admin/products")
+          return
         }
 
-        const data = await res.json();
+        const data = await res.json()
 
-        if (cancelled) return;
+        if (cancelled) return
 
         if (!res.ok || !data.success) {
-          setError(data.message || "Failed to fetch products");
-          setLoading(false);
-          return;
+          setError(data.message || "Failed to fetch products")
+          setLoading(false)
+          return
         }
 
-        setProducts(data.data || []);
-        setPagination(data.pagination || null);
+        setProducts(data.data || [])
+        setPagination(data.pagination || null)
       } catch {
         if (!cancelled) {
-          setError("Network error. Please try again.");
+          setError("Network error. Please try again.")
         }
       } finally {
         if (!cancelled) {
-          setLoading(false);
+          setLoading(false)
         }
       }
     }
 
-    fetchProducts();
+    fetchProducts()
 
     return () => {
-      cancelled = true;
-    };
-  }, [page, search, router]);
+      cancelled = true
+    }
+  }, [page, search, router])
 
   function navigate(pageNum: number, searchTerm?: string) {
-    const params = new URLSearchParams();
-    params.set("page", pageNum.toString());
-    const q = searchTerm !== undefined ? searchTerm : search;
-    if (q) params.set("search", q);
-    router.push(`/admin/products?${params.toString()}`);
+    const params = new URLSearchParams()
+    params.set("page", pageNum.toString())
+    const q = searchTerm !== undefined ? searchTerm : search
+    if (q) params.set("search", q)
+    router.push(`/admin/products?${params.toString()}`)
   }
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const q = formData.get("search") as string;
-    navigate(1, q);
+    e.preventDefault()
+    const formData = new FormData(e.currentTarget)
+    const q = formData.get("search") as string
+    navigate(1, q)
   }
 
-  async function handleDelete(id: string, name: string) {
-    if (!window.confirm(`Are you sure you want to delete "${name}"?`)) {
-      return;
-    }
+  async function handleDeleteConfirm() {
+    if (!deleteId) return
 
+    setIsDeleting(true)
     try {
-      const res = await fetch(`/api/products/${id}`, {
+      const res = await fetch(`/api/products/${deleteId}`, {
         method: "DELETE",
         credentials: "include",
-      });
+      })
 
-      const data = await res.json();
+      const data = await res.json()
 
       if (!res.ok || !data.success) {
-        alert(data.message || "Failed to delete product");
-        return;
+        toast.error(data.message || "Failed to delete product")
+        return
       }
 
-      window.location.reload();
+      toast.success("Product deleted successfully")
+      
+      // Refresh list
+      const updatedProducts = products.filter(p => p.id !== deleteId)
+      setProducts(updatedProducts)
+      
+      if (updatedProducts.length === 0 && page > 1) {
+        navigate(page - 1, search)
+      }
     } catch {
-      alert("Network error. Please try again.");
+      toast.error("Network error. Please try again.")
+    } finally {
+      setIsDeleting(false)
+      setDeleteId(null)
     }
   }
 
+  const columns: ColumnDef<Product>[] = [
+    {
+      accessorKey: "name",
+      header: "Name",
+    },
+    {
+      accessorKey: "description",
+      header: "Description",
+    },
+    {
+      accessorKey: "price",
+      header: "Price",
+      cell: ({ row }) => `$${Number(row.getValue("price")).toFixed(2)}`,
+    },
+    {
+      accessorKey: "stock",
+      header: "Stock",
+    },
+    {
+      id: "actions",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const product = row.original
+        return (
+          <DropdownMenu>
+            <DropdownMenuTrigger render={<Button variant="ghost" className="h-8 w-8 p-0" />}>
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem render={<Link href={`/admin/products/${product.id}/edit`} />}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuItem 
+                onClick={() => setDeleteId(product.id)}
+                className="text-destructive focus:text-destructive cursor-pointer"
+              >
+                <Trash className="mr-2 h-4 w-4" />
+                Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )
+      },
+    },
+  ]
+
+  const table = useReactTable({
+    data: products,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  })
+
   return (
-    <div>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
-        <h1 style={{ color: "#333", fontSize: "1.5rem" }}>Products</h1>
-        <a
-          href="/admin/products/new"
-          style={{
-            background: "#0070f3",
-            color: "#fff",
-            padding: "0.5rem 1rem",
-            borderRadius: "4px",
-            textDecoration: "none",
-            fontSize: "0.9rem",
-          }}
-        >
-          + New Product
-        </a>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Products</h1>
+        <Button render={<Link href="/admin/products/new" />}>
+          <Plus className="mr-2 h-4 w-4" />
+          New Product
+        </Button>
       </div>
 
-      <form onSubmit={handleSearch} style={{ marginBottom: "1rem", display: "flex", gap: "0.5rem" }}>
-        <input
-          name="search"
-          defaultValue={search}
-          placeholder="Search products..."
-          style={{
-            flex: 1,
-            padding: "0.5rem",
-            border: "1px solid #ddd",
-            borderRadius: "4px",
-            fontSize: "0.9rem",
-          }}
-        />
-        <button
-          type="submit"
-          style={{
-            padding: "0.5rem 1rem",
-            background: "#333",
-            color: "#fff",
-            border: "none",
-            borderRadius: "4px",
-            cursor: "pointer",
-          }}
-        >
-          Search
-        </button>
-      </form>
+      <div className="flex items-center py-4">
+        <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
+          <Input
+            type="search"
+            name="search"
+            placeholder="Search products..."
+            defaultValue={search}
+            className="w-full"
+          />
+          <Button type="submit" variant="secondary">
+            <Search className="h-4 w-4" />
+            <span className="sr-only">Search</span>
+          </Button>
+        </form>
+      </div>
 
       {error && (
-        <div style={{ padding: "1rem", background: "#ffe0e0", color: "#c00", borderRadius: "4px", marginBottom: "1rem" }}>
+        <div className="rounded-md bg-destructive/15 p-4 text-sm text-destructive">
           {error}
         </div>
       )}
 
-      {loading && (
-        <p style={{ color: "#666", textAlign: "center", padding: "2rem" }}>Loading products...</p>
-      )}
-
-      {!loading && !error && (
-        <>
-          <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", borderCollapse: "collapse", background: "#fff", borderRadius: "4px", overflow: "hidden" }}>
-              <thead>
-                <tr style={{ background: "#f0f0f0" }}>
-                  <th style={thStyle}>Name</th>
-                  <th style={thStyle}>Description</th>
-                  <th style={thStyle}>Price</th>
-                  <th style={thStyle}>Stock</th>
-                  <th style={{ ...thStyle, width: "160px" }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {products.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} style={{ textAlign: "center", padding: "2rem", color: "#999" }}>
-                      No products found.
-                    </td>
-                  </tr>
-                ) : (
-                  products.map((product) => (
-                    <tr key={product.id} style={{ borderBottom: "1px solid #eee" }}>
-                      <td style={tdStyle}>{product.name}</td>
-                      <td style={tdStyle}>{product.description}</td>
-                      <td style={tdStyle}>${Number(product.price).toFixed(2)}</td>
-                      <td style={tdStyle}>{product.stock}</td>
-                      <td style={tdStyle}>
-                        <a
-                          href={`/admin/products/${product.id}/edit`}
-                          style={{
-                            background: "#0070f3",
-                            color: "#fff",
-                            padding: "0.3rem 0.6rem",
-                            borderRadius: "4px",
-                            textDecoration: "none",
-                            fontSize: "0.8rem",
-                            marginRight: "0.5rem",
-                          }}
-                        >
-                          Edit
-                        </a>
-                        <button
-                          onClick={() => handleDelete(product.id, product.name)}
-                          style={{
-                            background: "#e00",
-                            color: "#fff",
-                            padding: "0.3rem 0.6rem",
-                            border: "none",
-                            borderRadius: "4px",
-                            cursor: "pointer",
-                            fontSize: "0.8rem",
-                          }}
-                        >
-                          Delete
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-
-          {pagination && pagination.totalPages > 1 && (
-            <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: "0.5rem", marginTop: "1rem" }}>
-              <button
-                onClick={() => navigate(page - 1, search)}
-                disabled={page <= 1}
-                style={pageBtnStyle(page <= 1)}
-              >
-                Previous
-              </button>
-              {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => navigate(p, search)}
-                  style={{
-                    ...pageBtnStyle(p === page),
-                    fontWeight: p === page ? "bold" : "normal",
-                  }}
+      <div className="rounded-md border bg-card">
+        <Table>
+          <TableHeader>
+            {table.getHeaderGroups().map((headerGroup) => (
+              <TableRow key={headerGroup.id}>
+                {headerGroup.headers.map((header) => {
+                  return (
+                    <TableHead key={header.id}>
+                      {header.isPlaceholder
+                        ? null
+                        : flexRender(
+                            header.column.columnDef.header,
+                            header.getContext()
+                          )}
+                    </TableHead>
+                  )
+                })}
+              </TableRow>
+            ))}
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
+              table.getRowModel().rows.map((row) => (
+                <TableRow
+                  key={row.id}
+                  data-state={row.getIsSelected() && "selected"}
                 >
-                  {p}
-                </button>
-              ))}
-              <button
-                onClick={() => navigate(page + 1, search)}
-                disabled={page >= pagination.totalPages}
-                style={pageBtnStyle(page >= pagination.totalPages)}
-              >
-                Next
-              </button>
-            </div>
-          )}
-        </>
+                  {row.getVisibleCells().map((cell) => (
+                    <TableCell key={cell.id}>
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-24 text-center">
+                  No results.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+
+      {!loading && pagination && pagination.totalPages > 1 && (
+        <div className="flex items-center justify-end space-x-2 py-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(page - 1)}
+            disabled={page <= 1}
+          >
+            Previous
+          </Button>
+          <div className="text-sm text-muted-foreground mx-2">
+            Page {page} of {pagination.totalPages}
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => navigate(page + 1)}
+            disabled={page >= pagination.totalPages}
+          >
+            Next
+          </Button>
+        </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the product
+              and remove its data from our servers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteConfirm()
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
-  );
+  )
 }
 
 export default function ProductsPage() {
   return (
-    <Suspense fallback={<p style={{ color: "#666", textAlign: "center", padding: "2rem" }}>Loading...</p>}>
+    <Suspense fallback={<div className="flex h-[50vh] items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>}>
       <ProductsContent />
     </Suspense>
-  );
-}
-
-const thStyle: React.CSSProperties = {
-  textAlign: "left",
-  padding: "0.75rem",
-  fontSize: "0.85rem",
-  color: "#555",
-  borderBottom: "2px solid #ddd",
-};
-
-const tdStyle: React.CSSProperties = {
-  padding: "0.75rem",
-  fontSize: "0.9rem",
-  color: "#333",
-};
-
-function pageBtnStyle(disabled: boolean): React.CSSProperties {
-  return {
-    padding: "0.4rem 0.8rem",
-    border: "1px solid #ddd",
-    borderRadius: "4px",
-    background: disabled ? "#f5f5f5" : "#fff",
-    color: disabled ? "#ccc" : "#333",
-    cursor: disabled ? "not-allowed" : "pointer",
-    fontSize: "0.85rem",
-  };
+  )
 }
