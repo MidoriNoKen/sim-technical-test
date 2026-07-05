@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { MoreHorizontal, Plus, Search, Trash, Edit, Loader2, Package, CircleAlert, DollarSign, Layers } from "lucide-react"
+import { MoreHorizontal, Plus, Search, Trash, Edit, Eye, Loader2, Package, CircleAlert, DollarSign, Layers } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
@@ -237,15 +237,22 @@ function ProductsContent() {
               <span className="sr-only">Open menu</span>
               <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-              <DropdownMenuLabel className="text-slate-400">Actions</DropdownMenuLabel>
-              <DropdownMenuItem 
-                onClick={() => router.push(`/admin/products/${product.id}/edit`)}
-                className="cursor-pointer"
-              >
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Product
-              </DropdownMenuItem>
+              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
+                <DropdownMenuLabel className="text-slate-400">Actions</DropdownMenuLabel>
+                <DropdownMenuItem 
+                  onClick={() => router.push(`/admin/products/${product.id}`)}
+                  className="cursor-pointer"
+                >
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => router.push(`/admin/products/${product.id}/edit`)}
+                  className="cursor-pointer"
+                >
+                  <Edit className="mr-2 h-4 w-4" />
+                  Edit Product
+                </DropdownMenuItem>
               <DropdownMenuItem 
                 onClick={(e) => {
                   e.preventDefault()
