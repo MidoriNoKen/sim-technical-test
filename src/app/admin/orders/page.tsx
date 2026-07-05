@@ -2,18 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { MoreHorizontal, Plus, Search, Eye, Loader2, Package, DollarSign, ShoppingCart, Users, Trash2, Check } from "lucide-react"
-import { toast } from "sonner"
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog"
+import { MoreHorizontal, Plus, Search, Eye, Loader2, Package, DollarSign, ShoppingCart, Users } from "lucide-react"
 import {
   flexRender,
   getCoreRowModel,
@@ -79,64 +68,8 @@ function OrdersContent() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  const [actionLoading, setActionLoading] = useState(false)
-  const [deleteId, setDeleteId] = useState<string | null>(null)
-  const [isDeleting, setIsDeleting] = useState(false)
-
   const page = parseInt(searchParams.get("page") || "1", 10)
   const search = searchParams.get("search") || ""
-
-  async function handleUpdateStatus(orderId: string, status: string) {
-    setActionLoading(true)
-    try {
-      const res = await fetch(`/api/orders/${orderId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-        credentials: "include",
-      })
-
-      const data = await res.json()
-
-      if (!res.ok || !data.success) {
-        toast.error(data.message || "Failed to update status")
-        return
-      }
-
-      toast.success("Order status updated successfully")
-      setOrders(prev => prev.map(o => o.id === orderId ? data.data : o))
-    } catch {
-      toast.error("Network error. Please try again.")
-    } finally {
-      setActionLoading(false)
-    }
-  }
-
-  async function handleDeleteOrder() {
-    if (!deleteId) return
-    setIsDeleting(true)
-    try {
-      const res = await fetch(`/api/orders/${deleteId}`, {
-        method: "DELETE",
-        credentials: "include",
-      })
-
-      const data = await res.json()
-
-      if (!res.ok || !data.success) {
-        toast.error(data.message || "Failed to delete order")
-        return
-      }
-
-      toast.success("Order deleted successfully")
-      setOrders(prev => prev.filter(o => o.id !== deleteId))
-    } catch {
-      toast.error("Network error. Please try again.")
-    } finally {
-      setIsDeleting(false)
-      setDeleteId(null)
-    }
-  }
 
   useEffect(() => {
     let cancelled = false
@@ -284,6 +217,8 @@ function OrdersContent() {
           let badgeClass = "bg-amber-500/10 text-amber-400 border-amber-500/20"
           if (status === "COMPLETED") {
             badgeClass = "bg-emerald-500/10 text-emerald-400 border-emerald-500/20"
+          } else if (status === "VERIFIED") {
+            badgeClass = "bg-violet-500/10 text-violet-400 border-violet-500/20"
           } else if (status === "CANCELLED") {
             badgeClass = "bg-rose-500/10 text-rose-400 border-rose-500/20"
           }
@@ -302,12 +237,12 @@ function OrdersContent() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger render={
-                <Button disabled={actionLoading} variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40" />
+                <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40" />
               }>
                 <span className="sr-only">Open menu</span>
                 <MoreHorizontal className="h-4 w-4" />
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200 w-48">
+              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
                 <DropdownMenuLabel className="text-slate-400">Actions</DropdownMenuLabel>
                 <DropdownMenuItem
                   onClick={() => router.push(`/admin/orders/${order.id}`)}
@@ -316,59 +251,13 @@ function OrdersContent() {
                   <Eye className="mr-2 h-4 w-4" />
                   View Details
                 </DropdownMenuItem>
-                
-                {order.status === "PENDING" && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => handleUpdateStatus(order.id, "VERIFIED")}
-                      className="text-blue-400 focus:text-blue-300 focus:bg-blue-950/30 cursor-pointer font-medium"
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      Verify Order
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleUpdateStatus(order.id, "CANCELLED")}
-                      className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer font-medium"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Cancel Order
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                {order.status === "VERIFIED" && (
-                  <>
-                    <DropdownMenuItem
-                      onClick={() => handleUpdateStatus(order.id, "COMPLETED")}
-                      className="text-emerald-400 focus:text-emerald-300 focus:bg-emerald-950/30 cursor-pointer font-medium"
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      Complete Order
-                    </DropdownMenuItem>
-                    <DropdownMenuItem
-                      onClick={() => handleUpdateStatus(order.id, "CANCELLED")}
-                      className="text-rose-400 focus:text-rose-300 focus:bg-rose-950/30 cursor-pointer font-medium"
-                    >
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Cancel Order
-                    </DropdownMenuItem>
-                  </>
-                )}
-
-                <DropdownMenuItem
-                  onClick={() => setDeleteId(order.id)}
-                  className="text-slate-400 focus:text-slate-200 focus:bg-slate-800/40 cursor-pointer font-medium"
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Delete Order
-                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           )
         },
       },
     ],
-    [router, actionLoading]
+    [router]
   )
 
   // eslint-disable-next-line react-hooks/incompatible-library
@@ -551,34 +440,6 @@ function OrdersContent() {
           </Button>
         </div>
       )}
-      {/* Delete Confirmation Dialog */}
-      <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>
-        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-slate-100">Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription className="text-slate-400">
-              This action cannot be undone. This will permanently delete the order
-              and restock the products.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeleting} className="border-slate-800 bg-transparent hover:bg-slate-800 text-slate-300">
-              Cancel
-            </AlertDialogCancel>
-            <AlertDialogAction
-              onClick={(e) => {
-                e.preventDefault()
-                handleDeleteOrder()
-              }}
-              className="bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-600/10"
-              disabled={isDeleting}
-            >
-              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-              Delete
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   )
 }
