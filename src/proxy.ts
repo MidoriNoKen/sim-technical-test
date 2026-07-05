@@ -72,17 +72,33 @@ export async function proxy(request: NextRequest) {
   // 2. Logging incoming requests
   logger.info({ method, url: pathname, ip }, "Incoming API Request");
 
-  // 3. Redis-based rate limiting check
+  // Determine route types
+  const isOrdersRoute = pathname.startsWith("/api/orders");
+  const isProductsRoute = pathname.startsWith("/api/products");
+  const isAdminRoute = pathname.startsWith("/admin");
+
+  // 3. Redis-based rate limiting check with endpoint-specific limits
   let rateLimitHeaders: Record<string, string> = {};
   try {
-    const rateLimit = await checkRateLimit(ip);
+    // Determine rate limit type based on endpoint
+    let rateLimitType: "public" | "authenticated" | "admin" | "write" = "authenticated";
+
+    if (pathname === "/api/auth/login") {
+      rateLimitType = "public";
+    } else if (isAdminRoute) {
+      rateLimitType = "admin";
+    } else if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+      rateLimitType = "write";
+    }
+
+    const rateLimit = await checkRateLimit(ip, rateLimitType);
     rateLimitHeaders = {
       "X-RateLimit-Limit": rateLimit.limit.toString(),
       "X-RateLimit-Remaining": rateLimit.remaining.toString(),
       "Retry-After": rateLimit.reset.toString(),
     };
     if (!rateLimit.success) {
-      logger.warn({ method, url: pathname, ip }, "Rate limit exceeded");
+      logger.warn({ method, url: pathname, ip, type: rateLimitType }, "Rate limit exceeded");
       const response = NextResponse.json(
         { success: false, message: "Too many requests. Please try again later." },
         { status: 429, headers: rateLimitHeaders }
@@ -95,9 +111,6 @@ export async function proxy(request: NextRequest) {
   }
 
   // Intercept requests to protected routes (e.g., /api/orders, /api/products, /admin)
-  const isOrdersRoute = pathname.startsWith("/api/orders");
-  const isProductsRoute = pathname.startsWith("/api/products");
-  const isAdminRoute = pathname.startsWith("/admin");
 
   if (isOrdersRoute || isProductsRoute || isAdminRoute) {
     let token: string | null = null;
