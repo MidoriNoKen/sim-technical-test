@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const userId = _request.headers.get("x-user-id");
+    const userRole = _request.headers.get("x-user-role");
     if (!userId) {
       return sendResponse(
         {
@@ -20,10 +21,9 @@ export async function GET(
     }
 
     const { id } = await params;
-    const orders = await orderService.getUserOrders(userId);
-    const order = orders.find((o) => o.id === id);
+    const order = await orderService.getOrderById(id);
 
-    if (!order) {
+    if (userRole !== "ADMIN" && order.userId !== userId) {
       return sendResponse(
         {
           success: false,
