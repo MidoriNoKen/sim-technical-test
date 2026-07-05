@@ -23,6 +23,7 @@ const txMock = {
 // Mock prisma: $transaction immediately invokes the callback with txMock
 vi.mock("@/lib/prisma", () => ({
   prisma: {
+    user: { findUnique: vi.fn().mockResolvedValue({ id: "user-uuid-1", email: "test@test.com" }) },
     $transaction: vi.fn(async (callback: (tx: typeof txMock) => Promise<unknown>) =>
       callback(txMock)
     ),
