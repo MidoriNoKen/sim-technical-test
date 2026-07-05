@@ -198,7 +198,7 @@ function ProductsContent() {
       accessorKey: "price",
       header: "Price",
       cell: ({ row }) => (
-        <span className="font-medium text-slate-200">${Number(row.getValue("price")).toLocaleString("en-US", { minimumFractionDigits: 2 })}</span>
+        <span className="font-medium text-slate-200">Rp {Number(row.getValue("price")).toLocaleString("id-ID")}</span>
       )
     },
     {
@@ -298,7 +298,7 @@ function ProductsContent() {
             <p className="text-xs font-medium text-slate-400">Page Stock Value</p>
             <DollarSign className="h-4 w-4 text-emerald-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">${totalValue.toLocaleString("en-US", { minimumFractionDigits: 2 })}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">Rp {totalValue.toLocaleString("id-ID")}</p>
           <span className="text-[10px] text-slate-500">Valuation of current page stock</span>
         </div>
 

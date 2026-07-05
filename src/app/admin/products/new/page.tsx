@@ -90,10 +90,10 @@ export default function NewProductPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="max-w-5xl mx-auto space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Page Header */}
       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" render={<Link href="/admin/products" />} className="border-slate-800 hover:bg-slate-800 text-slate-300">
+        <Button variant="outline" size="icon" render={<Link href="/admin/products" />} className="border-slate-800 bg-slate-900/50 hover:bg-slate-800 text-slate-300 hover:text-white transition-all shadow-sm">
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
@@ -107,9 +107,9 @@ export default function NewProductPage() {
       <div className="grid gap-6 md:grid-cols-5">
         {/* Form Container */}
         <div className="md:col-span-3">
-          <Card className="bg-slate-900/40 border-slate-800 text-slate-200">
-            <CardHeader>
-              <CardTitle className="text-slate-100">Product Details</CardTitle>
+          <Card className="bg-slate-900/40 border-slate-800/60 shadow-xl backdrop-blur-md">
+            <CardHeader className="border-b border-slate-800/40 pb-4 mb-4">
+              <CardTitle className="text-slate-100 text-lg">Product Details</CardTitle>
               <CardDescription className="text-slate-400">
                 Provide specifications, pricing, and stock details for this item.
               </CardDescription>
@@ -151,9 +151,9 @@ export default function NewProductPage() {
                       name="price"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-slate-300">Price ($)</FormLabel>
+                          <FormLabel className="text-slate-300">Price (Rp)</FormLabel>
                           <FormControl>
-                            <Input type="number" step="0.01" min="0" {...field} value={field.value as string | number} className="bg-slate-950/40 border-slate-800 text-slate-200 focus-visible:ring-indigo-500" />
+                            <Input type="number" step="1" min="0" {...field} value={field.value as string | number} className="bg-slate-950/40 border-slate-800 text-slate-200 focus-visible:ring-indigo-500" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -231,7 +231,7 @@ export default function NewProductPage() {
               <div>
                 <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Price</span>
                 <span className="text-xl font-bold text-indigo-400">
-                  ${(Number(watchedPrice) || 0).toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                  Rp {(Number(watchedPrice) || 0).toLocaleString("id-ID")}
                 </span>
               </div>
               <Button type="button" disabled className="bg-slate-800 text-slate-400 border border-slate-700/40 select-none pointer-events-none text-xs h-8 px-4 rounded-lg">

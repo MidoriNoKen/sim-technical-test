@@ -16,13 +16,14 @@ export async function checkRateLimit(ip: string): Promise<RateLimitResult> {
 
   // Atomic increment
   const count = await redis.incr(key);
+  let ttl = await redis.ttl(key);
 
   // If first request in the window, set expiration
-  if (count === 1) {
+  if (ttl === -1 || count === 1) {
     await redis.expire(key, WINDOW_SECONDS);
+    ttl = WINDOW_SECONDS;
   }
 
-  const ttl = await redis.ttl(key);
   const reset = ttl > 0 ? ttl : WINDOW_SECONDS;
 
   return {

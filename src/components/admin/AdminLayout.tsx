@@ -71,7 +71,9 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
         {/* Sidebar Nav */}
         <nav className="flex-1 space-y-1.5 px-4 py-6">
           {sidebarItems.map((item) => {
-            const isActive = pathname === item.href || pathname?.startsWith(`${item.href}/`)
+            const isActive = item.href === '/admin' 
+              ? pathname === '/admin' 
+              : (pathname === item.href || pathname?.startsWith(`${item.href}/`))
             return (
               <Link
                 key={item.name}
@@ -136,15 +138,37 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           </div>
 
           <div className="flex items-center gap-4">
-            {/* Notification Bell */}
-            <Button
-              variant="outline"
-              size="icon"
-              className="rounded-full border-slate-800 hover:bg-slate-850 text-slate-400 hover:text-slate-200 relative"
-            >
-              <Bell className="h-4 w-4" />
-              <span className="absolute top-1 right-1 h-1.5 w-1.5 rounded-full bg-indigo-500 ring-2 ring-slate-950" />
-            </Button>
+            {/* Notification Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger render={
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="rounded-full border-slate-800 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-slate-200 relative"
+                />
+              }>
+                  <Bell className="h-4 w-4" />
+                  <span className="absolute top-[5px] right-[7px] h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-slate-950 animate-pulse" />
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-64 bg-slate-900 border-slate-800 text-slate-200 p-0 overflow-hidden">
+                <div className="bg-slate-800/50 px-4 py-3 font-semibold text-sm border-b border-slate-800">
+                  Notifications
+                </div>
+                <div className="flex flex-col">
+                  <div className="px-4 py-3 hover:bg-slate-800/40 cursor-pointer transition-colors border-b border-slate-800/50">
+                    <p className="text-sm font-medium text-slate-200">New Order #1024</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Just now</p>
+                  </div>
+                  <div className="px-4 py-3 hover:bg-slate-800/40 cursor-pointer transition-colors">
+                    <p className="text-sm font-medium text-slate-200">Stock Low: USB-C Hub</p>
+                    <p className="text-xs text-slate-400 mt-0.5">2 hours ago</p>
+                  </div>
+                </div>
+                <div className="bg-slate-950/50 p-2 text-center border-t border-slate-800">
+                  <button className="text-xs text-indigo-400 hover:text-indigo-300 font-medium">Mark all as read</button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             {/* User Dropdown */}
             <DropdownMenu>
@@ -158,7 +182,17 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
                 <ChevronDown className="h-3 w-3 text-slate-500" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                <DropdownMenuLabel className="text-slate-400">Account Options</DropdownMenuLabel>
+                <DropdownMenuLabel className="font-normal">
+                  <div className="flex flex-col space-y-1">
+                    <p className="text-sm font-medium leading-none text-slate-200">Admin User</p>
+                    <p className="text-xs leading-none text-slate-500">admin@solutech.id</p>
+                  </div>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator className="bg-slate-800" />
+                <DropdownMenuItem className="cursor-pointer text-slate-300 focus:bg-slate-800 focus:text-slate-200">
+                  <User className="mr-2 h-4 w-4" />
+                  Profile Settings
+                </DropdownMenuItem>
                 <DropdownMenuSeparator className="bg-slate-800" />
                 <DropdownMenuItem 
                   onClick={handleLogout} 
