@@ -3,6 +3,9 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 
+const Redis = require("ioredis");
+const redis = new Redis(process.env.REDIS_URL || "redis://localhost:6379");
+
 async function main() {
   console.log("Start seeding...");
 
@@ -13,6 +16,27 @@ async function main() {
   await prisma.user.deleteMany();
   await prisma.product.deleteMany();
   console.log("Database cleared.");
+
+  // Clear Redis product cache
+  try {
+    console.log("Clearing Redis cache...");
+    let cursor = "0";
+    let allKeys = [];
+    do {
+      const reply = await redis.scan(cursor, "MATCH", "products:*", "COUNT", 100);
+      cursor = reply[0];
+      allKeys = allKeys.concat(reply[1]);
+    } while (cursor !== "0");
+
+    if (allKeys.length > 0) {
+      await redis.del(...allKeys);
+      console.log(`Redis cache cleared (${allKeys.length} keys)`);
+    } else {
+      console.log("No Redis cache keys to clear.");
+    }
+  } catch (error) {
+    console.error("Failed to clear Redis cache:", error);
+  }
 
   // 2. Seed Admin User
   console.log("Seeding Admin user...");
@@ -78,4 +102,9 @@ main()
   })
   .finally(async () => {
     await prisma.$disconnect();
+    try {
+      await redis.quit();
+    } catch (err) {
+      console.error("Error disconnecting Redis:", err);
+    }
   });
