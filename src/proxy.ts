@@ -79,6 +79,9 @@ export async function proxy(request: NextRequest) {
   const isOrdersRoute = pathname.startsWith("/api/orders");
   const isProductsRoute = pathname.startsWith("/api/products");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isCustomerRoute = pathname === "/" || pathname === "/cart" || pathname === "/orders" || pathname.startsWith("/products/");
+  const isLoginRoute = pathname === "/login";
+  const isApiRoute = pathname.startsWith("/api/");
 
   // 3. Redis-based rate limiting check with endpoint-specific limits
   let rateLimitHeaders: Record<string, string> = {};
@@ -113,9 +116,9 @@ export async function proxy(request: NextRequest) {
     logger.error({ error, ip }, "Rate limiter check failed (fail-open)");
   }
 
-  // Intercept requests to protected routes (e.g., /api/orders, /api/products, /admin)
+  // Intercept requests to protected routes (e.g., /api/orders, /api/products, /admin) and apply redirects for customer/login
 
-  if (isOrdersRoute || isProductsRoute || isAdminRoute) {
+  if (isOrdersRoute || isProductsRoute || isAdminRoute || isCustomerRoute || isLoginRoute) {
     let token: string | null = null;
 
     // 1. Check Authorization Header
@@ -133,19 +136,39 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!token) {
-      // For admin routes, redirect to login page instead of returning JSON
-      if (isAdminRoute) {
+      // Allow unauthenticated access to /login ONLY
+      if (isLoginRoute) {
+        const response = NextResponse.next();
+        Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
+        setSecurityHeaders(response);
+        return response;
+      }
+
+      // For page routes, redirect to login page
+      if (isAdminRoute || isCustomerRoute) {
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("redirect", pathname);
         const response = NextResponse.redirect(loginUrl);
         setSecurityHeaders(response);
         return response;
       }
+      
+      // For API routes, return 401 JSON
+      if (isOrdersRoute || isProductsRoute) {
+        const response = NextResponse.json(
+          { success: false, message: "Unauthorized: Token missing" },
+          { status: 401, headers: rateLimitHeaders }
+        );
+        setSecurityHeaders(response);
+        return response;
+      }
 
-      const response = NextResponse.json(
-        { success: false, message: "Unauthorized: Token missing" },
-        { status: 401, headers: rateLimitHeaders }
-      );
+      const response = NextResponse.next();
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
       setSecurityHeaders(response);
       return response;
     }
@@ -154,9 +177,25 @@ export async function proxy(request: NextRequest) {
       // Validate token using jose
       const secretKey = getSecretKey();
       const { payload } = await jwtVerify(token, secretKey);
+      const role = payload.role as string;
+
+      // Handle authenticated user at /login
+      if (isLoginRoute) {
+        const redirectUrl = role === "ADMIN" ? "/admin" : "/";
+        const response = NextResponse.redirect(new URL(redirectUrl, request.url));
+        setSecurityHeaders(response);
+        return response;
+      }
 
       // For admin routes, check if user has admin role
-      if (isAdminRoute && payload.role !== "ADMIN") {
+      if (isAdminRoute && role !== "ADMIN") {
+        // Redirect customer to customer dashboard if they try to access admin
+        if (role === "CUSTOMER") {
+          const response = NextResponse.redirect(new URL("/", request.url));
+          setSecurityHeaders(response);
+          return response;
+        }
+
         const response = NextResponse.json(
           { success: false, message: "Forbidden: Admin access required" },
           { status: 403, headers: rateLimitHeaders }
@@ -165,10 +204,18 @@ export async function proxy(request: NextRequest) {
         return response;
       }
 
+      // For customer routes, restrict admins from accessing them
+      if (isCustomerRoute && role !== "CUSTOMER") {
+        // Redirect admin to admin dashboard if they try to access storefront
+        const response = NextResponse.redirect(new URL("/admin", request.url));
+        setSecurityHeaders(response);
+        return response;
+      }
+
       // Clone request headers and insert user info
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", payload.userId as string);
-      requestHeaders.set("x-user-role", payload.role as string);
+      requestHeaders.set("x-user-role", role);
 
       const response = NextResponse.next({
         request: {
@@ -182,8 +229,8 @@ export async function proxy(request: NextRequest) {
       setSecurityHeaders(response);
       return response;
     } catch {
-      // For admin routes, redirect to login page on invalid token
-      if (isAdminRoute) {
+      // For page routes, redirect to login page on invalid token
+      if (isAdminRoute || pathname === "/orders") {
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("redirect", pathname);
         const response = NextResponse.redirect(loginUrl);
@@ -191,10 +238,21 @@ export async function proxy(request: NextRequest) {
         return response;
       }
 
-      const response = NextResponse.json(
-        { success: false, message: "Unauthorized: Invalid or expired token" },
-        { status: 401, headers: rateLimitHeaders }
-      );
+      if (isOrdersRoute || isProductsRoute) {
+        const response = NextResponse.json(
+          { success: false, message: "Unauthorized: Invalid or expired token" },
+          { status: 401, headers: rateLimitHeaders }
+        );
+        setSecurityHeaders(response);
+        return response;
+      }
+
+      // Fallback for customer routes with invalid token (just wipe it out? Let them pass as unauth)
+      const response = NextResponse.next();
+      response.cookies.delete("token");
+      Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+        response.headers.set(key, value);
+      });
       setSecurityHeaders(response);
       return response;
     }
@@ -208,7 +266,15 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Match API routes and admin routes (Next.js static assets are at /_next/ so they are never matched)
+// Match API routes, admin routes, and customer page routes
 export const config = {
-  matcher: ["/api/:path*", "/admin/:path*"],
+  matcher: [
+    "/",
+    "/cart",
+    "/orders",
+    "/products/:path*",
+    "/login",
+    "/api/:path*",
+    "/admin/:path*",
+  ],
 };

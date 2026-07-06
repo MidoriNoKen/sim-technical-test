@@ -41,14 +41,27 @@ async function main() {
   // 2. Seed Admin User
   console.log("Seeding Admin user...");
   const hashedPassword = "$2b$10$VDHRY8rjLDyRXm82AOgl2O5wLJAwFenpvpcqA1IVCXF55i.MOamfe";
-  const admin = await prisma.user.create({
-    data: {
+  const admin = await prisma.user.upsert({
+    where: { email: "admin@solutech.id" },
+    update: {},
+    create: {
       email: "admin@solutech.id",
       password: hashedPassword,
       role: "ADMIN",
     },
   });
   console.log("Admin user seeded:", admin.email);
+
+  const customer = await prisma.user.upsert({
+    where: { email: "customer@solutech.id" },
+    update: {},
+    create: {
+      email: "customer@solutech.id",
+      password: hashedPassword,
+      role: "CUSTOMER",
+    },
+  });
+  console.log("Customer user seeded:", customer.email);
 
   // 3. Seed Products
   console.log("Seeding products...");

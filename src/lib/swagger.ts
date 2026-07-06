@@ -5,6 +5,7 @@ export const getApiDocs = () => {
     apiFolder: "src/app/api", // Required by next-swagger-doc to build spec structure
     definition: {
       openapi: "3.0.0",
+      servers: [{ url: "http://localhost:3000/api" }],
       info: {
         title: "Solutech E-Commerce API",
         version: "1.0.0",
@@ -21,7 +22,7 @@ export const getApiDocs = () => {
         },
       },
       paths: {
-        "/api/auth/login": {
+        "/auth/login": {
           post: {
             tags: ["Auth"],
             summary: "Authenticate user and get JWT token",
@@ -88,7 +89,7 @@ export const getApiDocs = () => {
             },
           },
         },
-        "/api/products": {
+        "/products": {
           get: {
             tags: ["Products"],
             summary: "Get a list of active products (cached in Redis)",
@@ -212,7 +213,7 @@ export const getApiDocs = () => {
             },
           },
         },
-        "/api/products/{id}": {
+        "/products/{id}": {
           get: {
             tags: ["Products"],
             summary: "Get a product by ID",
@@ -307,7 +308,7 @@ export const getApiDocs = () => {
             },
           },
         },
-        "/api/orders": {
+        "/orders": {
           get: {
             tags: ["Orders"],
             summary: "Get order history for authenticated user (Admins get all with pagination & filters)",
@@ -447,7 +448,7 @@ export const getApiDocs = () => {
             },
           },
         },
-        "/api/orders/{id}": {
+        "/orders/{id}": {
           get: {
             tags: ["Orders"],
             summary: "Get detailed order information by ID",
