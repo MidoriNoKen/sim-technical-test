@@ -1,6 +1,6 @@
-# E-Commerce Backend REST API - Next.js (App Router), Prisma, PostgreSQL & Redis
+# E-Commerce Platform - Next.js (App Router), Prisma, PostgreSQL & Redis
 
-A production-ready, fully containerized e-commerce REST API built with Next.js (App Router, Standalone Build), Prisma, PostgreSQL, and Redis caching.
+A production-ready, fully containerized e-commerce application featuring a REST API, an Admin Dashboard, and a Customer Storefront, built with Next.js (App Router, Standalone Build), Prisma, PostgreSQL, and Redis caching.
 
 ---
 
@@ -18,7 +18,8 @@ docker compose up --build
 3. **Prisma Generation**: It runs `prisma generate` to compile and synchronize the Prisma Client types.
 4. **Data Seeding**: It triggers the seeder script `npx prisma db seed` to automatically seed:
    - Exactly **1 Admin User** (credentials: `admin@solutech.id` / `password123`).
-   - At least **5 Products** with realistic names, descriptions, price values, and inventory stocks.
+   - Exactly **1 Customer User** (credentials: `customer@solutech.id` / `password123`).
+   - At least **200 Products** with realistic names, descriptions, price values, and inventory stocks.
 5. **Start Production Server**: Automatically boots the Next.js production standalone server on port `3000`.
 
 ---
@@ -51,11 +52,12 @@ The project uses `.env.example` as a template for container and local environmen
 
 ## 📐 Technical Decisions & Assumptions
 
-### 1. Layered Architecture (Route -> Service -> Repository)
-We maintain a strict separation of concerns across files:
-* **Route Handlers (`src/app/api/...`)**: Extract parameters, validate schemas via Zod, invoke Service operations, and return standardized JSON responses using unified response helpers.
-* **Service Layer (`src/services/...`)**: Handle business logic, orchestrate db calls, manage caching, and throw semantic `AppError` exceptions with appropriate status codes.
-* **Repository Layer (`src/repositories/...`)**: Expose clean data-retrieval and mutation functions directly communicating with the database via Prisma client.
+### 1. Unified Full-Stack Architecture
+We maintain a strict separation of concerns across files while unifying the frontend and backend in a single Next.js application:
+* **Frontend Storefront & Admin (`src/app/(customer)` & `src/app/admin`)**: Fully responsive UI built with Tailwind CSS and shadcn/ui. The root `/` path serves the Customer Storefront, while `/admin` serves the management dashboard.
+* **Route Handlers (`src/app/api/...`)**: Extract parameters, validate schemas via Zod, invoke Service operations, and return standardized JSON responses. All APIs are strictly scoped under the `/api` prefix.
+* **Service Layer (`src/services/...`)**: Handle business logic, orchestrate db calls, manage caching, and throw semantic exceptions.
+* **Repository Layer (`src/repositories/...`)**: Expose clean data-retrieval and mutation functions communicating with the database via Prisma.
 
 ### 2. Interactive Transactions & Concurrency Safety
 For order creation (`POST /api/orders`), the entire operation is wrapped in a strict **Prisma Interactive Transaction** (`prisma.$transaction`).
@@ -86,7 +88,8 @@ A pre-configured Postman Collection is available at the root:
 - [x] **Zero-Config Docker Setup**: Runs Postgres, Redis, and Next.js out-of-the-box.
 - [x] **Raw SQL schema parity**: `database/schema.sql` verified matching schema state.
 - [x] **Seeders**: Scripts seed Admin user (`admin@solutech.id` / `password123`) and 5 core products.
-- [x] **Secure Authentication**: Hashed passwords (bcrypt) and protected routes using Next.js 16 `proxy` middleware.
+- [x] **Secure Authentication**: Hashed passwords (bcrypt) and protected routes using Next.js 16 `proxy` middleware with strict `ADMIN` and `CUSTOMER` role-based access control.
+- [x] **Full-Stack UI**: Integrated responsive Customer Storefront and Admin Dashboard using shadcn/ui and Tailwind CSS.
 - [x] **Product CRUD & Search**: Complete CRUD endpoints, pagination filters, and case-insensitive searching.
 - [x] **Order Placement Transactions**: Interactive transactions with concurrent inventory checks and rollbacks.
 - [x] **Redis Cache Invalidation**: Automatic scanning cache invalidation on write events.
