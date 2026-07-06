@@ -41,7 +41,7 @@ function LoginForm() {
       const role = data.data?.user?.role;
       const requestedRedirect = searchParams.get("redirect");
       
-      let finalRedirect = role === "ADMIN" ? "/admin/products" : "/";
+      let finalRedirect = role === "ADMIN" ? "/admin" : "/";
       
       if (requestedRedirect) {
         if (role === "ADMIN" && requestedRedirect.startsWith("/admin")) {

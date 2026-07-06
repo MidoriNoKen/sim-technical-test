@@ -171,7 +171,7 @@ export async function proxy(request: NextRequest) {
 
       // Handle authenticated user at /login
       if (isLoginRoute) {
-        const redirectUrl = role === "ADMIN" ? "/admin/products" : "/";
+        const redirectUrl = role === "ADMIN" ? "/admin" : "/";
         const response = NextResponse.redirect(new URL(redirectUrl, request.url));
         setSecurityHeaders(response);
         return response;
@@ -197,7 +197,7 @@ export async function proxy(request: NextRequest) {
       // For customer routes, restrict admins from accessing them
       if (isCustomerRoute && role !== "CUSTOMER") {
         // Redirect admin to admin dashboard if they try to access storefront
-        const response = NextResponse.redirect(new URL("/admin/products", request.url));
+        const response = NextResponse.redirect(new URL("/admin", request.url));
         setSecurityHeaders(response);
         return response;
       }
