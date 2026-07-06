@@ -173,7 +173,7 @@ export async function updateOrderStatus(
     }
 
     // 3. Update the order status
-    const verifiedById = newStatus === "VERIFIED" ? userId : undefined;
+    const verifiedById = newStatus === "VERIFIED" ? userId : null;
     return orderRepository.updateOrderStatus(tx, orderId, newStatus, verifiedById);
   });
 

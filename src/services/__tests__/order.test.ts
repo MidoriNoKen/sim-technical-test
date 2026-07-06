@@ -145,6 +145,24 @@ describe("Order Service - updateOrderStatus()", () => {
 
     // Assert
     expect(result.status).toBe("COMPLETED");
+    expect(orderRepository.updateOrderStatus).toHaveBeenCalledWith(txMock, "order-uuid-1", "COMPLETED", null);
+  });
+
+  it("should set verifiedById when status is VERIFIED", async () => {
+    // Arrange
+    const mockOrderPending = { ...mockOrder, status: "PENDING" };
+    const mockOrderVerified = { ...mockOrder, status: "VERIFIED" };
+    vi.mocked(orderRepository.findOrderById)
+      .mockResolvedValueOnce(mockOrderPending)
+      .mockResolvedValueOnce(mockOrderVerified);
+    vi.mocked(orderRepository.updateOrderStatus).mockResolvedValue(mockOrderVerified);
+
+    // Act
+    const result = await updateOrderStatus("order-uuid-1", "user-uuid-1", "VERIFIED");
+
+    // Assert
+    expect(result.status).toBe("VERIFIED");
+    expect(orderRepository.updateOrderStatus).toHaveBeenCalledWith(txMock, "order-uuid-1", "VERIFIED", "user-uuid-1");
   });
 
   it("should throw AppError 400 if status is invalid", async () => {

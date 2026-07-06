@@ -141,13 +141,13 @@ export async function updateOrderStatus(
   tx: Prisma.TransactionClient,
   orderId: string,
   status: string,
-  verifiedById?: string
+  verifiedById?: string | null
 ) {
   return tx.order.update({
     where: { id: orderId },
     data: { 
       status,
-      ...(verifiedById && { verifiedById }) 
+      ...(verifiedById !== undefined && { verifiedById }) 
     },
     include: {
       orderItems: true,
