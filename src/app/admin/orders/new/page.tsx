@@ -182,7 +182,7 @@ export default function NewOrderPage() {
       }
 
       toast.success("Order created successfully")
-      router.push(`/admin/orders/${data.data.id}`)
+      router.push(`/admin/orders`)
     } catch {
       toast.error("Network error. Please try again.")
     } finally {

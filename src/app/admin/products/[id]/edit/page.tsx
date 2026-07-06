@@ -41,6 +41,7 @@ export default function EditProductPage() {
   const [uploading, setUploading] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [imageKeys, setImageKeys] = useState<string[]>([])
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
 
   const form = useForm({
@@ -59,57 +60,42 @@ export default function EditProductPage() {
     if (!files) return;
     const fileList = Array.from(files);
 
-    if (imageKeys.length + fileList.length > 10) {
+    if (imageKeys.length + pendingFiles.length + fileList.length > 10) {
       toast.error("You can only upload up to 10 images");
       return;
     }
 
-    setUploading(true);
+    const newPendingFiles: File[] = [];
+    const newPreviewUrls: string[] = [];
+
     for (const file of fileList) {
       if (file.size > 5 * 1024 * 1024) {
         toast.error(`File "${file.name}" exceeds the 5MB limit`);
         continue;
       }
-
-      try {
-        const res = await fetch("/api/products/images/upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: file.name, contentType: file.type }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          toast.error(`Failed to initiate upload for "${file.name}"`);
-          continue;
-        }
-
-        const { uploadUrl, key } = data.data;
-
-        const s3Res = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-
-        if (!s3Res.ok) {
-          toast.error(`Failed to upload "${file.name}" to S3`);
-          continue;
-        }
-
-        const previewUrl = URL.createObjectURL(file);
-        setImageKeys((prev) => [...prev, key]);
-        setPreviewImages((prev) => [...prev, previewUrl]);
-      } catch (error) {
-        console.error(error);
-        toast.error(`Error uploading file "${file.name}"`);
-      }
+      newPendingFiles.push(file);
+      newPreviewUrls.push(URL.createObjectURL(file));
     }
-    setUploading(false);
+    
+    setPendingFiles((prev) => [...prev, ...newPendingFiles]);
+    setPreviewImages((prev) => [...prev, ...newPreviewUrls]);
+    
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
-    setImageKeys((prev) => prev.filter((_, i) => i !== index));
-    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+    if (index < imageKeys.length) {
+      setImageKeys((prev) => prev.filter((_, i) => i !== index));
+      setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+    } else {
+      const pendingIndex = index - imageKeys.length;
+      setPendingFiles((prev) => prev.filter((_, i) => i !== pendingIndex));
+      setPreviewImages((prev) => {
+        const url = prev[index];
+        if (url) URL.revokeObjectURL(url);
+        return prev.filter((_, i) => i !== index);
+      });
+    }
   };
 
   // Watch fields for live preview
@@ -187,14 +173,49 @@ export default function EditProductPage() {
 
   async function onSubmit(data: ProductFormValues) {
     setLoading(true)
+    setUploading(true)
     try {
+      const uploadedKeys: string[] = [];
+      for (const file of pendingFiles) {
+        try {
+          const res = await fetch("/api/products/images/upload-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+          });
+          const uploadData = await res.json();
+          if (!res.ok || !uploadData.success) {
+            toast.error(`Failed to initiate upload for "${file.name}"`);
+            continue;
+          }
+
+          const { uploadUrl, key } = uploadData.data;
+          const s3Res = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+
+          if (!s3Res.ok) {
+            toast.error(`Failed to upload "${file.name}" to S3`);
+            continue;
+          }
+          uploadedKeys.push(key);
+        } catch (error) {
+          console.error(error);
+          toast.error(`Error uploading file "${file.name}"`);
+        }
+      }
+
+      const finalImageKeys = [...imageKeys, ...uploadedKeys];
+
       const res = await fetch(`/api/products/${id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           ...data,
-          images: imageKeys,
+          images: finalImageKeys,
         }),
       })
 
@@ -206,11 +227,12 @@ export default function EditProductPage() {
       }
 
       toast.success("Product updated successfully")
-      router.push("/admin/products")
+      router.push(`/admin/products/${id}`)
     } catch {
       toast.error("Network error. Please try again.")
     } finally {
       setLoading(false)
+      setUploading(false)
     }
   }
 
@@ -332,8 +354,8 @@ export default function EditProductPage() {
                           </button>
                         </div>
                       ))}
-                      {imageKeys.length < 10 && (
-                        <label className="border border-dashed border-slate-855 hover:border-indigo-500/50 bg-slate-950/20 hover:bg-slate-950/40 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer transition-all duration-300">
+                      {(imageKeys.length + pendingFiles.length) < 10 && (
+                        <label className="border border-dashed border-slate-850 hover:border-indigo-500/50 bg-slate-950/20 hover:bg-slate-950/40 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer transition-all duration-300">
                           {uploading ? (
                             <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
                           ) : (
@@ -386,7 +408,7 @@ export default function EditProductPage() {
                   </div>
 
                   <div className="flex justify-end gap-4 pt-4">
-                    <Button type="button" variant="outline" disabled={loading} onClick={() => router.push("/admin/products")} className="border-slate-850 bg-transparent text-slate-300 hover:bg-slate-800">
+                    <Button type="button" variant="outline" disabled={loading} onClick={() => router.push(`/admin/products/${id}`)} className="border-slate-850 bg-transparent text-slate-300 hover:bg-slate-800">
                       Cancel
                     </Button>
                     <Button type="submit" disabled={loading} className="bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 text-white shadow-lg shadow-indigo-600/20">
@@ -424,7 +446,7 @@ export default function EditProductPage() {
                   <img
                     src={previewImages[0]}
                     alt="Main Preview"
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
                     onError={() => setImageErrors(prev => ({ ...prev, [previewImages[0]]: true }))}
                   />
                 )}

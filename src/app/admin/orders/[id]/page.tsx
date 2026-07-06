@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Loader2, Package, User, Calendar, ShoppingCart, Check, Trash2, Image as ImageIcon } from "lucide-react"
+import { ArrowLeft, Loader2, Package, User, Calendar, ShoppingCart, Check, Trash2, Image as ImageIcon, ChevronLeft, ChevronRight } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -83,6 +83,7 @@ function OrderDetailContent() {
   const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null)
   const [isItemDetailsOpen, setIsItemDetailsOpen] = useState(false)
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
+  const [currentImageIndex, setCurrentImageIndex] = useState(0)
 
   async function handleUpdateStatus(status: string) {
     setActionLoading(true)
@@ -489,6 +490,7 @@ function OrderDetailContent() {
                       onClick={() => {
                         setSelectedItem(item);
                         setIsItemDetailsOpen(true);
+                        setCurrentImageIndex(0);
                       }}
                       className="border-slate-800 hover:bg-slate-800 text-slate-300 text-xs"
                     >
@@ -537,63 +539,135 @@ function OrderDetailContent() {
       </AlertDialog>
 
       <Dialog open={isItemDetailsOpen} onOpenChange={setIsItemDetailsOpen}>
-        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[480px]">
-          <DialogHeader className="border-b border-slate-800/60 pb-3">
-            <DialogTitle className="text-slate-100">Order Item Detail</DialogTitle>
-            <DialogDescription className="text-slate-400">
-              Details and specifications of this purchased product
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="bg-[#0A0A0A] border-slate-800/60 text-slate-200 sm:max-w-[550px] p-0 overflow-hidden shadow-2xl">
+          <div className="p-6 pb-4 border-b border-white/5 bg-white/[0.02]">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+                <Package className="h-5 w-5 text-indigo-400" />
+                Item Specifications
+              </DialogTitle>
+              <DialogDescription className="text-slate-400 mt-1.5">
+                Detailed breakdown for the purchased product
+              </DialogDescription>
+            </DialogHeader>
+          </div>
 
           {selectedItem && (
-            <div className="space-y-4 pt-3">
-              {/* Product Image */}
-              {selectedItem.product.images && selectedItem.product.images.length > 0 && !imageErrors[selectedItem.product.images[0]] ? (
-                <div className="aspect-video w-full rounded-lg border border-slate-800 bg-slate-950 overflow-hidden flex items-center justify-center">
-                  <img
-                    src={selectedItem.product.images[0]}
-                    alt={selectedItem.product.name}
-                    className="h-full w-full object-contain"
-                    onError={() => setImageErrors(prev => ({ ...prev, [selectedItem.product.images![0]]: true }))}
-                  />
-                </div>
-              ) : (
-                <div className="aspect-video w-full rounded-lg border border-dashed border-slate-850 flex flex-col items-center justify-center p-6 text-slate-500 bg-slate-950/20">
-                  <ImageIcon className="h-8 w-8 mb-1.5 opacity-40" />
-                  <span className="text-xs">
-                    {selectedItem.product.images && selectedItem.product.images.length > 0 ? "Image not available" : "No product image available"}
-                  </span>
-                </div>
-              )}
+            <div className="p-6 pt-2 space-y-6">
+              {/* Product Visuals */}
+              {/* Product Visuals */}
+              <div className="relative aspect-video w-full rounded-xl border border-white/10 bg-black/40 overflow-hidden group shadow-inner flex items-center justify-center">
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10 pointer-events-none" />
+                
+                {selectedItem.product.images && selectedItem.product.images.length > 0 ? (
+                  <>
+                    {!imageErrors[selectedItem.product.images[currentImageIndex]] ? (
+                      <img
+                        src={selectedItem.product.images[currentImageIndex]}
+                        alt={selectedItem.product.name}
+                        className="h-full w-full object-contain p-2 transition-transform duration-700 group-hover:scale-105"
+                        onError={() => setImageErrors(prev => ({ ...prev, [selectedItem.product.images![currentImageIndex]]: true }))}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center p-6 text-slate-500 z-10">
+                        <ImageIcon className="h-12 w-12 mb-3 opacity-30" />
+                        <span className="text-sm font-medium">Image Failed to Load</span>
+                      </div>
+                    )}
 
-              {/* Product Name & Description */}
-              <div className="space-y-1">
-                <h4 className="text-base font-semibold text-slate-100">{selectedItem.product.name}</h4>
-                <p className="text-xs text-slate-400 font-mono">
-                  Product ID: {selectedItem.productId.toUpperCase()}
-                </p>
-                <div className="bg-slate-950/40 border border-slate-800/60 rounded-md p-3 mt-2">
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    {selectedItem.product.description || "No description provided for this product."}
+                    {selectedItem.product.images.length > 1 && (
+                      <>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setCurrentImageIndex((prev) => (prev === 0 ? selectedItem.product.images!.length - 1 : prev - 1));
+                          }}
+                          className="absolute left-2 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all hover:bg-black/80 hover:scale-110"
+                        >
+                          <ChevronLeft className="h-5 w-5" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setCurrentImageIndex((prev) => (prev === selectedItem.product.images!.length - 1 ? 0 : prev + 1));
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 z-20 h-8 w-8 rounded-full bg-black/50 backdrop-blur-md border border-white/10 flex items-center justify-center text-white transition-all hover:bg-black/80 hover:scale-110"
+                        >
+                          <ChevronRight className="h-5 w-5" />
+                        </button>
+
+                        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-20 flex gap-1.5">
+                          {selectedItem.product.images.map((_, idx) => (
+                            <button
+                              key={idx}
+                              type="button"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setCurrentImageIndex(idx);
+                              }}
+                              className={`h-1.5 rounded-full transition-all ${currentImageIndex === idx ? 'w-4 bg-white' : 'w-1.5 bg-white/40 hover:bg-white/70'}`}
+                            />
+                          ))}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="absolute bottom-3 right-3 z-20">
+                      <span className="backdrop-blur-md bg-black/40 border border-white/10 text-white text-[10px] font-medium px-2.5 py-1 rounded-full flex items-center gap-1.5 shadow-sm">
+                        <ImageIcon className="h-3 w-3 opacity-70" />
+                        {currentImageIndex + 1} / {selectedItem.product.images.length}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-6 text-slate-500 z-10">
+                    <div className="h-12 w-12 rounded-full bg-white/[0.05] flex items-center justify-center mb-3">
+                      <ImageIcon className="h-6 w-6 opacity-50" />
+                    </div>
+                    <span className="text-sm font-medium">No Visual Available</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Product Info */}
+              <div className="space-y-3">
+                <div>
+                  <h4 className="text-xl font-bold text-white tracking-tight">{selectedItem.product.name}</h4>
+                  <p className="text-[11px] text-indigo-400/80 font-mono mt-1.5 bg-indigo-500/10 inline-block px-2 py-0.5 rounded border border-indigo-500/20">
+                    ID: {selectedItem.productId.toUpperCase()}
                   </p>
+                </div>
+                
+                <div className="relative bg-white/[0.02] border border-white/5 rounded-lg p-4 leading-relaxed text-sm text-slate-300 shadow-sm">
+                  {selectedItem.product.description ? (
+                     <p className="line-clamp-3 hover:line-clamp-none transition-all">{selectedItem.product.description}</p>
+                  ) : (
+                     <p className="italic text-slate-500">No description provided for this product.</p>
+                  )}
                 </div>
               </div>
 
-              {/* Breakdown Grid */}
-              <div className="grid grid-cols-3 gap-2 bg-slate-950/20 border border-slate-800/60 rounded-md p-3 text-center">
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Price</span>
+              {/* Financial Breakdown Grid */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-slate-900/50 border border-white/5 rounded-xl p-4 text-center flex flex-col items-center justify-center shadow-sm">
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider mb-1.5">Unit Price</span>
                   <span className="text-sm font-semibold text-slate-200">
                     Rp {selectedItem.priceAtPurchase.toLocaleString("id-ID")}
                   </span>
                 </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Quantity</span>
-                  <span className="text-sm font-semibold text-slate-200">{selectedItem.quantity} qty</span>
+                <div className="bg-slate-900/50 border border-white/5 rounded-xl p-4 text-center flex flex-col items-center justify-center shadow-sm relative overflow-hidden">
+                  <div className="absolute inset-0 bg-indigo-500/5" />
+                  <span className="text-[10px] uppercase font-bold text-indigo-400/70 tracking-wider mb-1 relative z-10">Quantity</span>
+                  <span className="text-lg font-bold text-white relative z-10">{selectedItem.quantity} <span className="text-xs font-normal text-slate-400">qty</span></span>
                 </div>
-                <div>
-                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Subtotal</span>
-                  <span className="text-sm font-semibold text-indigo-400">
+                <div className="bg-indigo-950/30 border border-indigo-500/20 rounded-xl p-4 text-center flex flex-col items-center justify-center shadow-sm">
+                  <span className="text-[10px] uppercase font-bold text-indigo-400/70 tracking-wider mb-1.5">Subtotal</span>
+                  <span className="text-base font-bold text-indigo-300">
                     Rp {(selectedItem.priceAtPurchase * selectedItem.quantity).toLocaleString("id-ID")}
                   </span>
                 </div>

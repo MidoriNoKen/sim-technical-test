@@ -35,7 +35,7 @@ export default function NewProductPage() {
   const [loading, setLoading] = useState(false)
   const [uploading, setUploading] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
-  const [imageKeys, setImageKeys] = useState<string[]>([])
+  const [pendingFiles, setPendingFiles] = useState<File[]>([])
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
 
   const form = useForm({
@@ -54,57 +54,37 @@ export default function NewProductPage() {
     if (!files) return;
     const fileList = Array.from(files);
 
-    if (imageKeys.length + fileList.length > 10) {
+    if (pendingFiles.length + fileList.length > 10) {
       toast.error("You can only upload up to 10 images");
       return;
     }
 
-    setUploading(true);
+    const newPendingFiles: File[] = [];
+    const newPreviewUrls: string[] = [];
+
     for (const file of fileList) {
       if (file.size > 5 * 1024 * 1024) {
         toast.error(`File "${file.name}" exceeds the 5MB limit`);
         continue;
       }
-
-      try {
-        const res = await fetch("/api/products/images/upload-url", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ fileName: file.name, contentType: file.type }),
-        });
-        const data = await res.json();
-        if (!res.ok || !data.success) {
-          toast.error(`Failed to initiate upload for "${file.name}"`);
-          continue;
-        }
-
-        const { uploadUrl, key } = data.data;
-
-        const s3Res = await fetch(uploadUrl, {
-          method: "PUT",
-          headers: { "Content-Type": file.type },
-          body: file,
-        });
-
-        if (!s3Res.ok) {
-          toast.error(`Failed to upload "${file.name}" to S3`);
-          continue;
-        }
-
-        const previewUrl = URL.createObjectURL(file);
-        setImageKeys((prev) => [...prev, key]);
-        setPreviewImages((prev) => [...prev, previewUrl]);
-      } catch (error) {
-        console.error(error);
-        toast.error(`Error uploading file "${file.name}"`);
-      }
+      newPendingFiles.push(file);
+      newPreviewUrls.push(URL.createObjectURL(file));
     }
-    setUploading(false);
+    
+    setPendingFiles((prev) => [...prev, ...newPendingFiles]);
+    setPreviewImages((prev) => [...prev, ...newPreviewUrls]);
+    
+    // Clear input so same file can be selected again if removed
+    e.target.value = '';
   };
 
   const removeImage = (index: number) => {
-    setImageKeys((prev) => prev.filter((_, i) => i !== index));
-    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+    setPendingFiles((prev) => prev.filter((_, i) => i !== index));
+    setPreviewImages((prev) => {
+      const url = prev[index];
+      if (url) URL.revokeObjectURL(url);
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   // Watch fields for live preview
@@ -117,14 +97,47 @@ export default function NewProductPage() {
 
   async function onSubmit(data: ProductFormValues) {
     setLoading(true)
+    setUploading(true)
     try {
+      const uploadedKeys: string[] = [];
+      for (const file of pendingFiles) {
+        try {
+          const res = await fetch("/api/products/images/upload-url", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+          });
+          const uploadData = await res.json();
+          if (!res.ok || !uploadData.success) {
+            toast.error(`Failed to initiate upload for "${file.name}"`);
+            continue;
+          }
+
+          const { uploadUrl, key } = uploadData.data;
+          const s3Res = await fetch(uploadUrl, {
+            method: "PUT",
+            headers: { "Content-Type": file.type },
+            body: file,
+          });
+
+          if (!s3Res.ok) {
+            toast.error(`Failed to upload "${file.name}" to S3`);
+            continue;
+          }
+          uploadedKeys.push(key);
+        } catch (error) {
+          console.error(error);
+          toast.error(`Error uploading file "${file.name}"`);
+        }
+      }
+
       const res = await fetch("/api/products", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
         body: JSON.stringify({
           ...data,
-          images: imageKeys,
+          images: uploadedKeys,
         }),
       })
 
@@ -141,6 +154,7 @@ export default function NewProductPage() {
       toast.error("Network error. Please try again.")
     } finally {
       setLoading(false)
+      setUploading(false)
     }
   }
 
@@ -240,7 +254,7 @@ export default function NewProductPage() {
                           </button>
                         </div>
                       ))}
-                      {imageKeys.length < 10 && (
+                      {pendingFiles.length < 10 && (
                         <label className="border border-dashed border-slate-850 hover:border-indigo-500/50 bg-slate-950/20 hover:bg-slate-950/40 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer transition-all duration-300">
                           {uploading ? (
                             <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
@@ -332,7 +346,7 @@ export default function NewProductPage() {
                   <img
                     src={previewImages[0]}
                     alt="Main Preview"
-                    className="h-full w-full object-contain"
+                    className="h-full w-full object-cover"
                     onError={() => setImageErrors(prev => ({ ...prev, [previewImages[0]]: true }))}
                   />
                 )}

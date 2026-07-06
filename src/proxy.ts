@@ -33,8 +33,8 @@ function setSecurityHeaders(response: NextResponse): void {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed by Next.js runtime
       "style-src 'self' 'unsafe-inline'",               // unsafe-inline needed by Tailwind/Next.js
       "font-src 'self' data:",
-      "img-src 'self' data: blob: https://*.s3.amazonaws.com",
-      "connect-src 'self' https://*.s3.amazonaws.com",
+      "img-src 'self' data: blob: https://*.amazonaws.com",
+      "connect-src 'self' https://*.amazonaws.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
     ].join("; ")

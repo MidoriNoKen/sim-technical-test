@@ -2,9 +2,20 @@
 
 import { use, useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Package, Tag, Layers, Clock, CalendarDays, Edit, CircleAlert, Image as ImageIcon } from "lucide-react"
+import { ArrowLeft, Loader2, Package, Tag, Layers, Clock, CalendarDays, Edit, Trash, CircleAlert, Image as ImageIcon } from "lucide-react"
+import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface Product {
   id: string
@@ -25,6 +36,33 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
   const [error, setError] = useState("")
   const [activeImageIdx, setActiveImageIdx] = useState(0)
   const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  async function handleDeleteProduct() {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/products/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      })
+
+      const data = await res.json()
+
+      if (!res.ok || !data.success) {
+        toast.error(data.message || "Failed to delete product")
+        return
+      }
+
+      toast.success("Product deleted successfully")
+      router.push("/admin/products")
+    } catch {
+      toast.error("Network error. Please try again.")
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteDialogOpen(false)
+    }
+  }
 
   useEffect(() => {
     async function fetchProduct() {
@@ -96,10 +134,16 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
             <Package className="mr-1.5 h-3.5 w-3.5" /> Product ID: <span className="font-mono ml-1 text-slate-400">{product.id}</span>
           </p>
         </div>
-        <Button onClick={() => router.push(`/admin/products/${product.id}/edit`)} className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-md">
-          <Edit className="mr-2 h-4 w-4" />
-          Edit Product
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button onClick={() => router.push(`/admin/products/${product.id}/edit`)} className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 shadow-md">
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Product
+          </Button>
+          <Button onClick={() => setIsDeleteDialogOpen(true)} className="bg-rose-600 hover:bg-rose-700 text-white shadow-md shadow-rose-600/10">
+            <Trash className="mr-2 h-4 w-4" />
+            Delete Product
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
@@ -268,6 +312,33 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
           </div>
         </div>
       </div>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="bg-slate-900 border-slate-800 text-slate-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-slate-100">Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription className="text-slate-400">
+              This action cannot be undone. This will permanently delete the product
+              and remove its data from our database.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting} className="border-slate-800 bg-transparent hover:bg-slate-800 text-slate-300">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => {
+                e.preventDefault()
+                handleDeleteProduct()
+              }}
+              className="bg-rose-600 text-white hover:bg-rose-700 shadow-md shadow-rose-600/10"
+              disabled={isDeleting}
+            >
+              {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

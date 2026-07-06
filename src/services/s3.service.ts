@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectsCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { redis } from "@/lib/redis";
 import crypto from "crypto";
@@ -87,3 +87,43 @@ export async function getPresignedUrlsForKeys(keys: string[]): Promise<string[]>
 
   return urls;
 }
+
+export async function deleteKeysFromS3(keys: string[]): Promise<void> {
+  if (!keys || keys.length === 0) {
+    return;
+  }
+
+  if (!BUCKET_NAME) {
+    console.error("AWS_S3_BUCKET environment variable is not set. Cannot delete objects.");
+    return;
+  }
+
+  try {
+    const command = new DeleteObjectsCommand({
+      Bucket: BUCKET_NAME,
+      Delete: {
+        Objects: keys.map(key => ({ Key: key })),
+        Quiet: false,
+      },
+    });
+
+    const response = await s3Client.send(command);
+    if (response.Errors && response.Errors.length > 0) {
+      console.error("Errors occurred while deleting from S3:", response.Errors);
+    } else {
+      console.log(`Successfully deleted ${keys.length} object(s) from S3.`);
+    }
+
+    // Also delete from Redis cache
+    const redisKeys = keys.map(key => `${CACHE_PREFIX}${key}`);
+    try {
+      await redis.del(...redisKeys);
+    } catch (redisError) {
+      console.error("Failed to delete corresponding Redis keys:", redisError);
+    }
+
+  } catch (error) {
+    console.error("Failed to delete objects from S3:", error);
+  }
+}
+
