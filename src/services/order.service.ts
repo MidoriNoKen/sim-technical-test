@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import * as orderRepository from "@/repositories/order.repository";
 import { clearProductCache } from "@/services/product.service";
 import { AppError } from "@/utils/response";
+import { getPresignedUrlsForKeys } from "@/services/s3.service";
 
 export async function createOrder(
   userId: string,
@@ -82,7 +83,17 @@ export async function createOrder(
 }
 
 export async function getUserOrders(userId: string) {
-  return orderRepository.findOrdersByUserId(userId);
+  const orders = await orderRepository.findOrdersByUserId(userId);
+  for (const order of orders) {
+    if (order.orderItems) {
+      for (const item of order.orderItems) {
+        if (item.product && item.product.images) {
+          item.product.images = await getPresignedUrlsForKeys(item.product.images);
+        }
+      }
+    }
+  }
+  return orders;
 }
 
 export async function getAllOrders(params: {
@@ -97,6 +108,13 @@ export async function getOrderById(orderId: string) {
   const order = await orderRepository.findOrderById(orderId);
   if (!order) {
     throw new AppError("Order not found", 404);
+  }
+  if (order.orderItems) {
+    for (const item of order.orderItems) {
+      if (item.product && item.product.images) {
+        item.product.images = await getPresignedUrlsForKeys(item.product.images);
+      }
+    }
   }
   return order;
 }
@@ -179,7 +197,15 @@ export async function updateOrderStatus(
 
   await clearProductCache();
 
-  return orderRepository.findOrderById(orderId);
+  const updatedOrder = await orderRepository.findOrderById(orderId);
+  if (updatedOrder && updatedOrder.orderItems) {
+    for (const item of updatedOrder.orderItems) {
+      if (item.product && item.product.images) {
+        item.product.images = await getPresignedUrlsForKeys(item.product.images);
+      }
+    }
+  }
+  return updatedOrder;
 }
 
 export async function deleteOrder(orderId: string, userId: string) {

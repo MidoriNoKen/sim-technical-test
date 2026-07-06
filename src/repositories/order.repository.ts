@@ -45,6 +45,8 @@ export async function findOrdersByUserId(userId: string) {
             select: {
               name: true,
               price: true,
+              description: true,
+              images: true,
             },
           },
         },
@@ -129,6 +131,8 @@ export async function findOrderById(orderId: string) {
             select: {
               name: true,
               price: true,
+              description: true,
+              images: true,
             },
           },
         },

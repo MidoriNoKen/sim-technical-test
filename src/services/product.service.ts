@@ -2,6 +2,7 @@ import * as productRepository from "@/repositories/product.repository";
 import { redis } from "@/lib/redis";
 import { AppError } from "@/utils/response";
 import { Prisma } from "@prisma/client";
+import { getPresignedUrlsForKeys } from "@/services/s3.service";
 
 // Cache helpers
 const CACHE_PREFIX = "products:";
@@ -28,6 +29,7 @@ export async function clearProductCache() {
 export async function createProduct(data: Prisma.ProductCreateInput) {
   const product = await productRepository.create(data);
   await clearProductCache();
+  product.images = await getPresignedUrlsForKeys(product.images);
   return product;
 }
 
@@ -47,7 +49,11 @@ export async function getProducts(query: {
     const cachedData = await redis.get(cacheKey);
     if (cachedData) {
       console.log("Redis cache hit for key:", cacheKey);
-      return JSON.parse(cachedData);
+      const result = JSON.parse(cachedData);
+      for (const item of result.items) {
+        item.images = await getPresignedUrlsForKeys(item.images);
+      }
+      return result;
     }
   } catch (error) {
     console.error("Redis fetch error:", error);
@@ -64,6 +70,10 @@ export async function getProducts(query: {
     console.error("Redis store error:", error);
   }
 
+  for (const item of result.items) {
+    item.images = await getPresignedUrlsForKeys(item.images);
+  }
+
   return result;
 }
 
@@ -72,6 +82,7 @@ export async function getProductById(id: string) {
   if (!product) {
     throw new AppError("Product not found", 404);
   }
+  product.images = await getPresignedUrlsForKeys(product.images);
   return product;
 }
 
@@ -81,6 +92,7 @@ export async function updateProduct(id: string, data: Prisma.ProductUpdateInput)
 
   const updatedProduct = await productRepository.update(id, data);
   await clearProductCache();
+  updatedProduct.images = await getPresignedUrlsForKeys(updatedProduct.images);
   return updatedProduct;
 }
 

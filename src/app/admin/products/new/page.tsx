@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
-import { Loader2, ArrowLeft, Image as ImageIcon, Eye } from "lucide-react"
+import { Loader2, ArrowLeft, Image as ImageIcon, Eye, X, Upload } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,7 @@ const productSchema = z.object({
   description: z.string().min(5, "Description must be at least 5 characters"),
   price: z.coerce.number().positive("Price must be a positive number"),
   stock: z.coerce.number().int().min(0, "Stock cannot be negative"),
+  images: z.array(z.string()).default([]),
 })
 
 type ProductFormValues = z.infer<typeof productSchema>
@@ -32,6 +33,9 @@ type ProductFormValues = z.infer<typeof productSchema>
 export default function NewProductPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [previewImages, setPreviewImages] = useState<string[]>([])
+  const [imageKeys, setImageKeys] = useState<string[]>([])
 
   const form = useForm({
     resolver: zodResolver(productSchema),
@@ -40,8 +44,67 @@ export default function NewProductPage() {
       description: "",
       price: 0,
       stock: 0,
+      images: [],
     },
   })
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    const fileList = Array.from(files);
+
+    if (imageKeys.length + fileList.length > 10) {
+      toast.error("You can only upload up to 10 images");
+      return;
+    }
+
+    setUploading(true);
+    for (const file of fileList) {
+      if (file.size > 5 * 1024 * 1024) {
+        toast.error(`File "${file.name}" exceeds the 5MB limit`);
+        continue;
+      }
+
+      try {
+        const res = await fetch("/api/products/images/upload-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fileName: file.name, contentType: file.type }),
+        });
+        const data = await res.json();
+        if (!res.ok || !data.success) {
+          toast.error(`Failed to initiate upload for "${file.name}"`);
+          continue;
+        }
+
+        const { uploadUrl, key } = data.data;
+
+        const s3Res = await fetch(uploadUrl, {
+          method: "PUT",
+          headers: { "Content-Type": file.type },
+          body: file,
+        });
+
+        if (!s3Res.ok) {
+          toast.error(`Failed to upload "${file.name}" to S3`);
+          continue;
+        }
+
+        const previewUrl = URL.createObjectURL(file);
+        setImageKeys((prev) => [...prev, key]);
+        setPreviewImages((prev) => [...prev, previewUrl]);
+      } catch (error) {
+        console.error(error);
+        toast.error(`Error uploading file "${file.name}"`);
+      }
+    }
+    setUploading(false);
+  };
+
+  const removeImage = (index: number) => {
+    setImageKeys((prev) => prev.filter((_, i) => i !== index));
+    setPreviewImages((prev) => prev.filter((_, i) => i !== index));
+  };
 
   // Watch fields for live preview
   /* eslint-disable react-hooks/incompatible-library */
@@ -58,7 +121,10 @@ export default function NewProductPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          images: imageKeys,
+        }),
       })
 
       const resData = await res.json()
@@ -146,6 +212,44 @@ export default function NewProductPage() {
                     )}
                   />
 
+                  <div className="space-y-2">
+                    <FormLabel className="text-slate-300 block">Product Images (Max 10 images, 5MB each)</FormLabel>
+                    <div className="grid grid-cols-5 gap-3">
+                      {previewImages.map((src, idx) => (
+                        <div key={idx} className="relative aspect-square rounded-lg border border-slate-800 bg-slate-950 overflow-hidden group">
+                          <img src={src} alt="Preview" className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(idx)}
+                            className="absolute top-1 right-1 p-1 bg-rose-600 hover:bg-rose-700 text-white rounded-full transition-colors opacity-0 group-hover:opacity-100"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {imageKeys.length < 10 && (
+                        <label className="border border-dashed border-slate-850 hover:border-indigo-500/50 bg-slate-950/20 hover:bg-slate-950/40 rounded-lg aspect-square flex flex-col items-center justify-center cursor-pointer transition-all duration-300">
+                          {uploading ? (
+                            <Loader2 className="h-6 w-6 animate-spin text-indigo-400" />
+                          ) : (
+                            <>
+                              <Upload className="h-5 w-5 text-slate-500" />
+                              <span className="text-[10px] text-slate-400 mt-1">Upload</span>
+                            </>
+                          )}
+                          <input
+                            type="file"
+                            multiple
+                            accept="image/*"
+                            onChange={handleImageUpload}
+                            disabled={uploading}
+                            className="hidden"
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -204,13 +308,19 @@ export default function NewProductPage() {
             <div className="absolute bottom-0 left-0 h-24 w-24 rounded-full bg-violet-500/10 blur-2xl" />
 
             {/* Media Placeholder */}
-            <div className="h-32 w-full rounded-lg bg-slate-950/60 border border-slate-850 flex items-center justify-center text-slate-600 select-none relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-violet-500/5 opacity-50" />
-              <div className="flex flex-col items-center gap-1.5 relative z-10">
-                <ImageIcon className="h-7 w-7 text-slate-500" />
-                <span className="text-[10px] tracking-wider uppercase font-semibold text-slate-500">Image Preview</span>
+            {previewImages.length > 0 ? (
+              <div className="h-32 w-full rounded-lg bg-slate-950/60 border border-slate-850 flex items-center justify-center relative overflow-hidden group">
+                <img src={previewImages[0]} alt="Main Preview" className="h-full w-full object-cover" />
               </div>
-            </div>
+            ) : (
+              <div className="h-32 w-full rounded-lg bg-slate-950/60 border border-slate-850 flex items-center justify-center text-slate-600 select-none relative overflow-hidden group">
+                <div className="absolute inset-0 bg-gradient-to-r from-indigo-500/5 to-violet-500/5 opacity-50" />
+                <div className="flex flex-col items-center gap-1.5 relative z-10">
+                  <ImageIcon className="h-7 w-7 text-slate-500" />
+                  <span className="text-[10px] tracking-wider uppercase font-semibold text-slate-500">Image Preview</span>
+                </div>
+              </div>
+            )}
 
             {/* Title & Desc */}
             <div className="space-y-2 mt-4">

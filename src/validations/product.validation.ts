@@ -19,6 +19,11 @@ export const createProductSchema = z.object({
     .int("Stock must be an integer")
     .nonnegative("Stock must be a non-negative integer")
     .max(1_000_000, "Stock must not exceed 1 million"),
+  images: z
+    .array(z.string())
+    .max(10, "A product can have a maximum of 10 images")
+    .optional()
+    .default([]),
 });
 
 export const updateProductSchema = createProductSchema.partial();

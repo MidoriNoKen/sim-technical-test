@@ -2,11 +2,18 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useParams } from "next/navigation"
-import { ArrowLeft, Loader2, Package, User, Calendar, ShoppingCart, Check, Trash2 } from "lucide-react"
+import { ArrowLeft, Loader2, Package, User, Calendar, ShoppingCart, Check, Trash2, Image as ImageIcon } from "lucide-react"
 import { toast } from "sonner"
 
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
 import {
   Table,
   TableBody,
@@ -42,6 +49,8 @@ interface OrderItem {
   product: {
     name: string
     price: number
+    description?: string | null
+    images?: string[]
   }
 }
 
@@ -71,6 +80,8 @@ function OrderDetailContent() {
   const [error, setError] = useState("")
   const [actionLoading, setActionLoading] = useState(false)
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+  const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null)
+  const [isItemDetailsOpen, setIsItemDetailsOpen] = useState(false)
 
   async function handleUpdateStatus(status: string) {
     setActionLoading(true)
@@ -438,6 +449,9 @@ function OrderDetailContent() {
                 <TableHead className="text-slate-400 font-medium text-right">
                   Subtotal
                 </TableHead>
+                <TableHead className="text-slate-400 font-medium text-center w-24">
+                  Action
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -466,6 +480,19 @@ function OrderDetailContent() {
                   </TableCell>
                   <TableCell className="text-right font-medium text-slate-100">
                     Rp {(item.priceAtPurchase * item.quantity).toLocaleString("id-ID")}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setSelectedItem(item);
+                        setIsItemDetailsOpen(true);
+                      }}
+                      className="border-slate-800 hover:bg-slate-800 text-slate-300 text-xs"
+                    >
+                      Detail
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -507,6 +534,70 @@ function OrderDetailContent() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={isItemDetailsOpen} onOpenChange={setIsItemDetailsOpen}>
+        <DialogContent className="bg-slate-900 border-slate-800 text-slate-200 sm:max-w-[480px]">
+          <DialogHeader className="border-b border-slate-800/60 pb-3">
+            <DialogTitle className="text-slate-100">Order Item Detail</DialogTitle>
+            <DialogDescription className="text-slate-400">
+              Details and specifications of this purchased product
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedItem && (
+            <div className="space-y-4 pt-3">
+              {/* Product Image */}
+              {selectedItem.product.images && selectedItem.product.images.length > 0 ? (
+                <div className="aspect-video w-full rounded-lg border border-slate-800 bg-slate-950 overflow-hidden flex items-center justify-center">
+                  <img
+                    src={selectedItem.product.images[0]}
+                    alt={selectedItem.product.name}
+                    className="h-full w-full object-cover"
+                  />
+                </div>
+              ) : (
+                <div className="aspect-video w-full rounded-lg border border-dashed border-slate-850 flex flex-col items-center justify-center p-6 text-slate-500 bg-slate-950/20">
+                  <ImageIcon className="h-8 w-8 mb-1.5 opacity-40" />
+                  <span className="text-xs">No product image available</span>
+                </div>
+              )}
+
+              {/* Product Name & Description */}
+              <div className="space-y-1">
+                <h4 className="text-base font-semibold text-slate-100">{selectedItem.product.name}</h4>
+                <p className="text-xs text-slate-400 font-mono">
+                  Product ID: {selectedItem.productId.toUpperCase()}
+                </p>
+                <div className="bg-slate-950/40 border border-slate-800/60 rounded-md p-3 mt-2">
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    {selectedItem.product.description || "No description provided for this product."}
+                  </p>
+                </div>
+              </div>
+
+              {/* Breakdown Grid */}
+              <div className="grid grid-cols-3 gap-2 bg-slate-950/20 border border-slate-800/60 rounded-md p-3 text-center">
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Price</span>
+                  <span className="text-sm font-semibold text-slate-200">
+                    Rp {selectedItem.priceAtPurchase.toLocaleString("id-ID")}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Quantity</span>
+                  <span className="text-sm font-semibold text-slate-200">{selectedItem.quantity} qty</span>
+                </div>
+                <div>
+                  <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider block">Subtotal</span>
+                  <span className="text-sm font-semibold text-indigo-400">
+                    Rp {(selectedItem.priceAtPurchase * selectedItem.quantity).toLocaleString("id-ID")}
+                  </span>
+                </div>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
