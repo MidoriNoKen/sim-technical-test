@@ -40,12 +40,11 @@
               "raw": "{\n  \"email\": \"admin@solutech.id\",\n  \"password\": \"password123\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/auth/login",
+              "raw": "{{base_url}}/auth/login",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "auth",
                 "login"
               ]
@@ -71,12 +70,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/products?page=1&limit=10&search=Mouse&minPrice=10000&maxPrice=500000&sortBy=price&sortOrder=asc",
+              "raw": "{{base_url}}/products?page=1&limit=10&search=Mouse&minPrice=10000&maxPrice=500000&sortBy=price&sortOrder=asc",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "products"
               ],
               "query": [
@@ -142,12 +140,11 @@
               "raw": "{\n  \"name\": \"Wireless Gaming Mouse\",\n  \"description\": \"RGB wireless gaming mouse with 26000 DPI sensor\",\n  \"price\": 599000,\n  \"stock\": 25\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/products",
+              "raw": "{{base_url}}/products",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "products"
               ]
             },
@@ -167,12 +164,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/products/{{product_id}}",
+              "raw": "{{base_url}}/products/{{product_id}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "products",
                 "{{product_id}}"
               ]
@@ -202,12 +198,11 @@
               "raw": "{\n  \"price\": 549000,\n  \"stock\": 20\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/products/{{product_id}}",
+              "raw": "{{base_url}}/products/{{product_id}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "products",
                 "{{product_id}}"
               ]
@@ -228,12 +223,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/products/{{product_id}}",
+              "raw": "{{base_url}}/products/{{product_id}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "products",
                 "{{product_id}}"
               ]
@@ -268,12 +262,11 @@
               "raw": "{\n  \"items\": [\n    {\n      \"productId\": \"{{product_id}}\",\n      \"quantity\": 2\n    }\n  ]\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/orders",
+              "raw": "{{base_url}}/orders",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "orders"
               ]
             },
@@ -293,12 +286,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/orders?page=1&limit=10&search=customer@test.com&status=PENDING&minAmount=1000&maxAmount=500000&sortBy=totalAmount&sortOrder=desc",
+              "raw": "{{base_url}}/orders?page=1&limit=10&search=customer@test.com&status=PENDING&minAmount=1000&maxAmount=500000&sortBy=totalAmount&sortOrder=desc",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "orders"
               ],
               "query": [
@@ -360,12 +352,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/orders/{{order_id}}",
+              "raw": "{{base_url}}/orders/{{order_id}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "orders",
                 "{{order_id}}"
               ]
@@ -395,12 +386,11 @@
               "raw": "{\n  \"status\": \"COMPLETED\"\n}"
             },
             "url": {
-              "raw": "{{base_url}}/api/orders/{{order_id}}",
+              "raw": "{{base_url}}/orders/{{order_id}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "orders",
                 "{{order_id}}"
               ]
@@ -421,12 +411,11 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/orders/{{order_id}}",
+              "raw": "{{base_url}}/orders/{{order_id}}",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
-                "api",
                 "orders",
                 "{{order_id}}"
               ]
@@ -441,7 +430,7 @@
   "variable": [
     {
       "key": "base_url",
-      "value": "http://localhost:3000",
+      "value": "http://localhost:3000/api",
       "type": "string"
     },
     {
