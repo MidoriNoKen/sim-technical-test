@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { MoreHorizontal, Plus, Search, Eye, Loader2, Package, DollarSign, ShoppingCart, Users } from "lucide-react"
+import { MoreHorizontal, Plus, Search, Eye, Loader2, Package, DollarSign, ShoppingCart, Users, SlidersHorizontal } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   flexRender,
   getCoreRowModel,
@@ -64,6 +65,22 @@ function OrdersContent() {
   const sortBy = searchParams.get("sortBy") || "createdAt"
   const sortOrder = searchParams.get("sortOrder") || "desc"
 
+  const [localSearch, setLocalSearch] = useState(search)
+  const [localStatus, setLocalStatus] = useState(status)
+  const [localMinAmount, setLocalMinAmount] = useState(searchParams.get("minAmount") || "")
+  const [localMaxAmount, setLocalMaxAmount] = useState(searchParams.get("maxAmount") || "")
+  const [localSortBy, setLocalSortBy] = useState(sortBy)
+  const [localSortOrder, setLocalSortOrder] = useState(sortOrder)
+
+  useEffect(() => {
+    setLocalSearch(searchParams.get("search") || "")
+    setLocalStatus(searchParams.get("status") || "")
+    setLocalMinAmount(searchParams.get("minAmount") || "")
+    setLocalMaxAmount(searchParams.get("maxAmount") || "")
+    setLocalSortBy(searchParams.get("sortBy") || "createdAt")
+    setLocalSortOrder(searchParams.get("sortOrder") || "desc")
+  }, [searchParams])
+
   const [orders, setOrders] = useState<Order[]>([])
   const [page, setPage] = useState(1)
   const [hasNextPage, setHasNextPage] = useState(false)
@@ -71,6 +88,7 @@ function OrdersContent() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState("")
   const [totalCount, setTotalCount] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
 
   // Sync state with search params: reset page & orders when parameters change
   const currentParamsString = searchParams.toString()
@@ -173,20 +191,50 @@ function OrdersContent() {
   function handleFilterSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const q = formData.get("search") as string
-    const stat = formData.get("status") as string
-    const minA = formData.get("minAmount") as string
-    const maxA = formData.get("maxAmount") as string
-    const sortB = formData.get("sortBy") as string
-    const sortO = formData.get("sortOrder") as string
     
-    const params = new URLSearchParams()
-    if (q) params.set("search", q)
-    if (stat) params.set("status", stat)
-    if (minA) params.set("minAmount", minA)
-    if (maxA) params.set("maxAmount", maxA)
-    params.set("sortBy", sortB)
-    params.set("sortOrder", sortO)
+    // Start with current URL search params to preserve hidden filters
+    const params = new URLSearchParams(searchParams.toString())
+    params.set("page", "1") // reset to page 1 on new filter/search
+
+    const q = formData.get("search")
+    if (q !== null) {
+      const val = q.toString().trim()
+      if (val) params.set("search", val)
+      else params.delete("search")
+    }
+
+    const stat = formData.get("status")
+    if (stat !== null) {
+      const val = stat.toString().trim()
+      if (val) params.set("status", val)
+      else params.delete("status")
+    }
+
+    const minA = formData.get("minAmount")
+    if (minA !== null) {
+      const val = minA.toString().trim()
+      if (val) params.set("minAmount", val)
+      else params.delete("minAmount")
+    }
+
+    const maxA = formData.get("maxAmount")
+    if (maxA !== null) {
+      const val = maxA.toString().trim()
+      if (val) params.set("maxAmount", val)
+      else params.delete("maxAmount")
+    }
+
+    const sortB = formData.get("sortBy")
+    if (sortB !== null) {
+      const val = sortB.toString().trim()
+      if (val) params.set("sortBy", val)
+    }
+
+    const sortO = formData.get("sortOrder")
+    if (sortO !== null) {
+      const val = sortO.toString().trim()
+      if (val) params.set("sortOrder", val)
+    }
 
     router.push(`/admin/orders?${params.toString()}`)
   }
@@ -385,103 +433,127 @@ function OrdersContent() {
         </div>
       </div>
 
-      {/* Advanced Filter UI */}
-      <div className="rounded-xl border border-slate-800 bg-slate-900/10 p-5 shadow-xl backdrop-blur-sm">
-        <form onSubmit={handleFilterSubmit} className="grid gap-4 sm:grid-cols-2 md:grid-cols-6 items-end">
-          {/* Search */}
-          <div className="space-y-1.5 col-span-1 md:col-span-2">
-            <label className="text-xs font-semibold text-slate-400">Search</label>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
-              <Input
-                type="search"
-                name="search"
-                placeholder="Customer email..."
-                defaultValue={search}
-                className="pl-9 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
-              />
-            </div>
-          </div>
-
-          {/* Status */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Status</label>
-            <select
-              name="status"
-              defaultValue={status}
-              className="w-full rounded-md border border-slate-800 bg-slate-950/40 py-2 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-            >
-              <option className="bg-slate-900 text-slate-200" value="">All Statuses</option>
-              <option className="bg-slate-900 text-slate-200" value="PENDING">PENDING</option>
-              <option className="bg-slate-900 text-slate-200" value="VERIFIED">VERIFIED</option>
-              <option className="bg-slate-900 text-slate-200" value="COMPLETED">COMPLETED</option>
-              <option className="bg-slate-900 text-slate-200" value="CANCELLED">CANCELLED</option>
-            </select>
-          </div>
-          
-          {/* Min Amount */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Min Amount (Rp)</label>
+      {/* Search & Advanced Filters Form */}
+      <form onSubmit={handleFilterSubmit} className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[280px]">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-550" />
             <Input
-              type="number"
-              name="minAmount"
-              placeholder="e.g. 50000"
-              defaultValue={minAmount || ""}
-              className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-650 focus-visible:ring-indigo-500"
+              type="search"
+              name="search"
+              placeholder="Search orders by customer email..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="pl-10 h-10 bg-slate-900/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
             />
           </div>
+          <Button type="submit" className="h-10 px-5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-750 text-white font-semibold shadow-md shadow-indigo-600/10 transition-all duration-200 border-0">
+            Search
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              "h-10 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800 gap-2",
+              showFilters && "bg-slate-800/80 border-slate-700 text-indigo-400 hover:text-indigo-350"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {showFilters ? "Hide Filters" : "Filters"}
+          </Button>
+        </div>
 
-          {/* Max Amount */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Max Amount (Rp)</label>
-            <Input
-              type="number"
-              name="maxAmount"
-              placeholder="e.g. 2000000"
-              defaultValue={maxAmount || ""}
-              className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-650 focus-visible:ring-indigo-500"
-            />
-          </div>
+        {/* Collapsible Filters Panel */}
+        {showFilters && (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/10 p-5 shadow-xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 items-end">
+              {/* Status */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Status</label>
+                <select
+                  name="status"
+                  value={localStatus}
+                  onChange={(e) => setLocalStatus(e.target.value)}
+                  className="w-full rounded-md border border-slate-800 bg-slate-950/40 py-2 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                >
+                  <option className="bg-slate-900 text-slate-200" value="">All Statuses</option>
+                  <option className="bg-slate-900 text-slate-200" value="PENDING">PENDING</option>
+                  <option className="bg-slate-900 text-slate-200" value="VERIFIED">VERIFIED</option>
+                  <option className="bg-slate-900 text-slate-200" value="COMPLETED">COMPLETED</option>
+                  <option className="bg-slate-900 text-slate-200" value="CANCELLED">CANCELLED</option>
+                </select>
+              </div>
+              
+              {/* Min Amount */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Min Amount (Rp)</label>
+                <Input
+                  type="number"
+                  name="minAmount"
+                  placeholder="e.g. 50000"
+                  value={localMinAmount}
+                  onChange={(e) => setLocalMinAmount(e.target.value)}
+                  className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                />
+              </div>
 
-          {/* Sort By */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-400">Sort By</label>
-            <div className="flex gap-2">
-              <select
-                name="sortBy"
-                defaultValue={sortBy}
-                className="flex-1 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option className="bg-slate-900 text-slate-200" value="createdAt">Date Created</option>
-                <option className="bg-slate-900 text-slate-200" value="totalAmount">Total Amount</option>
-              </select>
-              <select
-                name="sortOrder"
-                defaultValue={sortOrder}
-                className="w-20 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-1.5 text-xs text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-              >
-                <option className="bg-slate-900 text-slate-200" value="desc">Desc</option>
-                <option className="bg-slate-900 text-slate-250" value="asc">Asc</option>
-              </select>
+              {/* Max Amount */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Max Amount (Rp)</label>
+                <Input
+                  type="number"
+                  name="maxAmount"
+                  placeholder="e.g. 2000000"
+                  value={localMaxAmount}
+                  onChange={(e) => setLocalMaxAmount(e.target.value)}
+                  className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                />
+              </div>
+
+              {/* Sort By */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Sort By</label>
+                <div className="flex gap-2">
+                  <select
+                    name="sortBy"
+                    value={localSortBy}
+                    onChange={(e) => setLocalSortBy(e.target.value)}
+                    className="flex-1 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option className="bg-slate-900 text-slate-200" value="createdAt">Date Created</option>
+                    <option className="bg-slate-900 text-slate-200" value="totalAmount">Total Amount</option>
+                  </select>
+                  <select
+                    name="sortOrder"
+                    value={localSortOrder}
+                    onChange={(e) => setLocalSortOrder(e.target.value)}
+                    className="w-20 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-1.5 text-xs text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  >
+                    <option className="bg-slate-900 text-slate-200" value="desc">Desc</option>
+                    <option className="bg-slate-900 text-slate-250" value="asc">Asc</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 col-span-1 md:col-span-4 justify-end">
+                <Button 
+                  type="button" 
+                  onClick={handleResetFilters}
+                  variant="outline" 
+                  className="w-24 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                >
+                  Reset
+                </Button>
+                <Button type="submit" className="w-32 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                  Apply Filters
+                </Button>
+              </div>
             </div>
           </div>
-
-          {/* Actions */}
-          <div className="flex gap-2 col-span-1 md:col-span-6 justify-end">
-            <Button 
-              type="button" 
-              onClick={handleResetFilters}
-              variant="outline" 
-              className="w-24 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
-            >
-              Reset
-            </Button>
-            <Button type="submit" className="w-32 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
-              Apply Filters
-            </Button>
-          </div>
-        </form>
-      </div>
+        )}
+      </form>
 
       {error && (
         <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-400">
@@ -526,7 +598,7 @@ function OrdersContent() {
                 </TableRow>
               ))
             ) : !loading ? (
-              <TableRow className="hover:bg-slate-800/10 transition-colors">
+              <TableRow className="hover:bg-transparent border-0">
                 <TableCell colSpan={columns.length} className="h-48 text-center text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <ShoppingCart className="h-8 w-8 text-slate-600" />
@@ -537,7 +609,7 @@ function OrdersContent() {
             ) : null}
 
             {loading && page === 1 && (
-              <TableRow className="hover:bg-slate-800/10 transition-colors">
+              <TableRow className="hover:bg-transparent">
                 <TableCell colSpan={columns.length} className="h-48 text-center">
                   <div className="flex flex-col items-center justify-center gap-2">
                     <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
