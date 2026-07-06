@@ -194,7 +194,6 @@ function OrdersContent() {
     
     // Start with current URL search params to preserve hidden filters
     const params = new URLSearchParams(searchParams.toString())
-    params.set("page", "1") // reset to page 1 on new filter/search
 
     const q = formData.get("search")
     if (q !== null) {
@@ -227,19 +226,28 @@ function OrdersContent() {
     const sortB = formData.get("sortBy")
     if (sortB !== null) {
       const val = sortB.toString().trim()
-      if (val) params.set("sortBy", val)
+      if (val && val !== "createdAt") params.set("sortBy", val)
+      else params.delete("sortBy")
     }
 
     const sortO = formData.get("sortOrder")
     if (sortO !== null) {
       const val = sortO.toString().trim()
-      if (val) params.set("sortOrder", val)
+      if (val && val !== "desc") params.set("sortOrder", val)
+      else params.delete("sortOrder")
     }
 
-    router.push(`/admin/orders?${params.toString()}`)
+    const queryString = params.toString()
+    router.push(queryString ? `/admin/orders?${queryString}` : "/admin/orders")
   }
 
   function handleResetFilters() {
+    setLocalSearch("")
+    setLocalStatus("")
+    setLocalMinAmount("")
+    setLocalMaxAmount("")
+    setLocalSortBy("createdAt")
+    setLocalSortOrder("desc")
     router.push("/admin/orders")
   }
 
@@ -475,7 +483,7 @@ function OrdersContent() {
                   name="status"
                   value={localStatus}
                   onChange={(e) => setLocalStatus(e.target.value)}
-                  className="w-full rounded-md border border-slate-800 bg-slate-950/40 py-2 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="w-full rounded-md border border-slate-800 bg-slate-950/40 h-10 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
                 >
                   <option className="bg-slate-900 text-slate-200" value="">All Statuses</option>
                   <option className="bg-slate-900 text-slate-200" value="PENDING">PENDING</option>
@@ -519,7 +527,7 @@ function OrdersContent() {
                     name="sortBy"
                     value={localSortBy}
                     onChange={(e) => setLocalSortBy(e.target.value)}
-                    className="flex-1 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="flex-1 rounded-md border border-slate-800 bg-slate-950/40 h-10 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
                   >
                     <option className="bg-slate-900 text-slate-200" value="createdAt">Date Created</option>
                     <option className="bg-slate-900 text-slate-200" value="totalAmount">Total Amount</option>
@@ -528,7 +536,7 @@ function OrdersContent() {
                     name="sortOrder"
                     value={localSortOrder}
                     onChange={(e) => setLocalSortOrder(e.target.value)}
-                    className="w-20 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-1.5 text-xs text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-20 rounded-md border border-slate-800 bg-slate-950/40 h-10 px-2 text-xs text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
                   >
                     <option className="bg-slate-900 text-slate-200" value="desc">Desc</option>
                     <option className="bg-slate-900 text-slate-250" value="asc">Asc</option>
@@ -542,11 +550,11 @@ function OrdersContent() {
                   type="button" 
                   onClick={handleResetFilters}
                   variant="outline" 
-                  className="w-24 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                  className="w-24 h-10 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
                 >
                   Reset
                 </Button>
-                <Button type="submit" className="w-32 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                <Button type="submit" className="w-32 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
                   Apply Filters
                 </Button>
               </div>
