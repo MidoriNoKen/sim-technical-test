@@ -24,6 +24,7 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [activeImageIdx, setActiveImageIdx] = useState(0)
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     async function fetchProduct() {
@@ -111,8 +112,20 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
           </h2>
           {product.images && product.images.length > 0 ? (
             <div className="space-y-4 w-full">
-              <div className="aspect-square rounded-lg border border-slate-800 bg-slate-950 overflow-hidden flex items-center justify-center">
-                <img src={product.images[activeImageIdx]} alt={product.name} className="h-full w-full object-cover" />
+               <div className="aspect-square rounded-lg border border-slate-800 bg-slate-950 overflow-hidden flex items-center justify-center relative">
+                {imageErrors[product.images![activeImageIdx]] ? (
+                  <div className="flex flex-col items-center justify-center p-6 text-slate-500">
+                    <ImageIcon className="h-10 w-10 mb-2 stroke-[1.5] opacity-60" />
+                    <span className="text-sm text-slate-650">Image not available</span>
+                  </div>
+                ) : (
+                  <img
+                    src={product.images![activeImageIdx]}
+                    alt={product.name}
+                    className="h-full w-full object-contain"
+                    onError={() => setImageErrors(prev => ({ ...prev, [product.images![activeImageIdx]]: true }))}
+                  />
+                )}
               </div>
               {product.images.length > 1 && (
                 <div className="grid grid-cols-5 gap-2">
@@ -124,7 +137,18 @@ export default function ProductDetailsPage({ params }: { params: Promise<{ id: s
                         activeImageIdx === idx ? "border-indigo-500 ring-2 ring-indigo-500/30" : "border-slate-800 opacity-60 hover:opacity-100"
                       }`}
                     >
-                      <img src={src} alt="Thumbnail" className="h-full w-full object-cover" />
+                      {imageErrors[src] ? (
+                        <div className="h-full w-full bg-slate-950 flex items-center justify-center text-slate-600">
+                          <ImageIcon className="h-4 w-4 opacity-50" />
+                        </div>
+                      ) : (
+                        <img
+                          src={src}
+                          alt="Thumbnail"
+                          className="h-full w-full object-contain"
+                          onError={() => setImageErrors(prev => ({ ...prev, [src]: true }))}
+                        />
+                      )}
                     </button>
                   ))}
                 </div>

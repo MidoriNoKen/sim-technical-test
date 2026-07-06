@@ -36,6 +36,7 @@ export default function NewProductPage() {
   const [uploading, setUploading] = useState(false)
   const [previewImages, setPreviewImages] = useState<string[]>([])
   const [imageKeys, setImageKeys] = useState<string[]>([])
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
 
   const form = useForm({
     resolver: zodResolver(productSchema),
@@ -216,8 +217,20 @@ export default function NewProductPage() {
                     <FormLabel className="text-slate-300 block">Product Images (Max 10 images, 5MB each)</FormLabel>
                     <div className="grid grid-cols-5 gap-3">
                       {previewImages.map((src, idx) => (
-                        <div key={idx} className="relative aspect-square rounded-lg border border-slate-800 bg-slate-950 overflow-hidden group">
-                          <img src={src} alt="Preview" className="h-full w-full object-cover" />
+                        <div key={idx} className="relative aspect-square rounded-lg border border-slate-800 bg-slate-950 overflow-hidden group flex items-center justify-center">
+                          {imageErrors[src] ? (
+                            <div className="flex flex-col items-center justify-center p-2 text-center text-slate-500">
+                              <ImageIcon className="h-6 w-6 mb-1 opacity-60" />
+                              <span className="text-[9px] leading-tight text-slate-600">Not Available</span>
+                            </div>
+                          ) : (
+                            <img
+                              src={src}
+                              alt="Preview"
+                              className="h-full w-full object-contain"
+                              onError={() => setImageErrors(prev => ({ ...prev, [src]: true }))}
+                            />
+                          )}
                           <button
                             type="button"
                             onClick={() => removeImage(idx)}
@@ -310,7 +323,19 @@ export default function NewProductPage() {
             {/* Media Placeholder */}
             {previewImages.length > 0 ? (
               <div className="h-32 w-full rounded-lg bg-slate-950/60 border border-slate-850 flex items-center justify-center relative overflow-hidden group">
-                <img src={previewImages[0]} alt="Main Preview" className="h-full w-full object-cover" />
+                {imageErrors[previewImages[0]] ? (
+                  <div className="flex flex-col items-center justify-center text-slate-500">
+                    <ImageIcon className="h-6 w-6 mb-1 opacity-60" />
+                    <span className="text-[10px] tracking-wider uppercase font-semibold text-slate-500">Image not available</span>
+                  </div>
+                ) : (
+                  <img
+                    src={previewImages[0]}
+                    alt="Main Preview"
+                    className="h-full w-full object-contain"
+                    onError={() => setImageErrors(prev => ({ ...prev, [previewImages[0]]: true }))}
+                  />
+                )}
               </div>
             ) : (
               <div className="h-32 w-full rounded-lg bg-slate-950/60 border border-slate-850 flex items-center justify-center text-slate-600 select-none relative overflow-hidden group">

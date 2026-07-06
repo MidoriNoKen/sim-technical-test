@@ -82,6 +82,7 @@ function OrderDetailContent() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [selectedItem, setSelectedItem] = useState<OrderItem | null>(null)
   const [isItemDetailsOpen, setIsItemDetailsOpen] = useState(false)
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({})
 
   async function handleUpdateStatus(status: string) {
     setActionLoading(true)
@@ -547,18 +548,21 @@ function OrderDetailContent() {
           {selectedItem && (
             <div className="space-y-4 pt-3">
               {/* Product Image */}
-              {selectedItem.product.images && selectedItem.product.images.length > 0 ? (
+              {selectedItem.product.images && selectedItem.product.images.length > 0 && !imageErrors[selectedItem.product.images[0]] ? (
                 <div className="aspect-video w-full rounded-lg border border-slate-800 bg-slate-950 overflow-hidden flex items-center justify-center">
                   <img
                     src={selectedItem.product.images[0]}
                     alt={selectedItem.product.name}
-                    className="h-full w-full object-cover"
+                    className="h-full w-full object-contain"
+                    onError={() => setImageErrors(prev => ({ ...prev, [selectedItem.product.images![0]]: true }))}
                   />
                 </div>
               ) : (
                 <div className="aspect-video w-full rounded-lg border border-dashed border-slate-850 flex flex-col items-center justify-center p-6 text-slate-500 bg-slate-950/20">
                   <ImageIcon className="h-8 w-8 mb-1.5 opacity-40" />
-                  <span className="text-xs">No product image available</span>
+                  <span className="text-xs">
+                    {selectedItem.product.images && selectedItem.product.images.length > 0 ? "Image not available" : "No product image available"}
+                  </span>
                 </div>
               )}
 
