@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
       200
     );
   } catch (error) {
-    logger.error({ error }, "Error generating upload presigned URL");
+    logger.error({ err: error }, "Error generating upload presigned URL");
     return sendResponse(
       {
         success: false,

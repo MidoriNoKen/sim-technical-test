@@ -40,7 +40,7 @@ services:
       redis_cache:
         condition: service_healthy
     env_file:
-      - .env.example
+      - .env
     environment:
       - DATABASE_URL=postgresql://solutech_user:solutech_password@postgres_db:5432/solutech_db?schema=public
       - REDIS_URL=redis://redis_cache:6379
