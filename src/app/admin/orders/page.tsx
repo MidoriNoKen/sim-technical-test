@@ -502,7 +502,7 @@ function OrdersContent() {
                   placeholder="e.g. 50000"
                   value={localMinAmount}
                   onChange={(e) => setLocalMinAmount(e.target.value)}
-                  className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
                 />
               </div>
 
@@ -515,7 +515,7 @@ function OrdersContent() {
                   placeholder="e.g. 2000000"
                   value={localMaxAmount}
                   onChange={(e) => setLocalMaxAmount(e.target.value)}
-                  className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
                 />
               </div>
 

@@ -444,7 +444,7 @@ function ProductsContent() {
                   placeholder="e.g. 10000"
                   value={localMinPrice}
                   onChange={(e) => setLocalMinPrice(e.target.value)}
-                  className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
                 />
               </div>
 
@@ -457,7 +457,7 @@ function ProductsContent() {
                   placeholder="e.g. 500000"
                   value={localMaxPrice}
                   onChange={(e) => setLocalMaxPrice(e.target.value)}
-                  className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
                 />
               </div>
 
