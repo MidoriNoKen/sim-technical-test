@@ -41,33 +41,48 @@ interface Product {
   stock: number
 }
 
-interface Pagination {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
 
 function ProductsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const search = searchParams.get("search") || ""
+
   const [products, setProducts] = useState<Product[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [page, setPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState("")
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    totalStockValue: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+  })
 
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
 
-  const page = parseInt(searchParams.get("page") || "1", 10)
-  const search = searchParams.get("search") || ""
+  // Sync state with search param: reset page & products when search changes
+  const [prevSearch, setPrevSearch] = useState(search)
+  if (search !== prevSearch) {
+    setPrevSearch(search)
+    setProducts([])
+    setPage(1)
+    setHasNextPage(false)
+  }
 
   useEffect(() => {
     let cancelled = false
 
     async function fetchProducts() {
-      setLoading(true)
+      if (page === 1) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
       setError("")
       try {
         const params = new URLSearchParams()
@@ -92,12 +107,22 @@ function ProductsContent() {
 
         if (!res.ok || !data.success) {
           setError(data.message || "Failed to fetch products")
-          setLoading(false)
           return
         }
 
-        setProducts(data.data || [])
-        setPagination(data.pagination || null)
+        if (page === 1) {
+          setProducts(data.data || [])
+        } else {
+          setProducts((prev) => [...prev, ...(data.data || [])])
+        }
+
+        if (data.stats) {
+          setStats(data.stats)
+        }
+
+        if (data.pagination) {
+          setHasNextPage(data.pagination.hasNextPage)
+        }
       } catch {
         if (!cancelled) {
           setError("Network error. Please try again.")
@@ -105,6 +130,7 @@ function ProductsContent() {
       } finally {
         if (!cancelled) {
           setLoading(false)
+          setLoadingMore(false)
         }
       }
     }
@@ -114,21 +140,33 @@ function ProductsContent() {
     return () => {
       cancelled = true
     }
-  }, [page, search, router])
+  }, [page, search, router, refreshKey])
 
-  function navigate(pageNum: number, searchTerm?: string) {
-    const params = new URLSearchParams()
-    params.set("page", pageNum.toString())
-    const q = searchTerm !== undefined ? searchTerm : search
-    if (q) params.set("search", q)
-    router.push(`/admin/products?${params.toString()}`);
-  }
+  const [observerRef, setObserverRef] = useState<HTMLDivElement | null>(null)
+
+  useEffect(() => {
+    if (!observerRef || !hasNextPage || loading || loadingMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(observerRef)
+    return () => observer.disconnect()
+  }, [observerRef, hasNextPage, loading, loadingMore])
 
   function handleSearch(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     const q = formData.get("search") as string
-    navigate(1, q)
+    const params = new URLSearchParams()
+    if (q) params.set("search", q)
+    router.push(`/admin/products?${params.toString()}`)
   }
 
   async function handleDeleteConfirm() {
@@ -150,13 +188,10 @@ function ProductsContent() {
 
       toast.success("Product deleted successfully")
       
-      // Refresh list
-      const updatedProducts = products.filter(p => p.id !== deleteId)
-      setProducts(updatedProducts)
-      
-      if (updatedProducts.length === 0 && page > 1) {
-        navigate(page - 1, search)
-      }
+      // Refresh list & stats
+      setProducts([])
+      setPage(1)
+      setRefreshKey(prev => prev + 1)
     } catch {
       toast.error("Network error. Please try again.")
     } finally {
@@ -164,12 +199,6 @@ function ProductsContent() {
       setDeleteId(null)
     }
   }
-
-  // Compute local stats for visual wow factor
-  const totalProductsCount = pagination?.total || products.length
-  const totalValue = products.reduce((acc, p) => acc + (p.price * p.stock), 0)
-  const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 10).length
-  const outOfStockCount = products.filter(p => p.stock === 0).length
 
   const columns: ColumnDef<Product>[] = [
     {
@@ -269,17 +298,17 @@ function ProductsContent() {
             <p className="text-xs font-medium text-slate-400">Total Products</p>
             <Package className="h-4 w-4 text-indigo-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{totalProductsCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{stats.totalProducts}</p>
           <span className="text-[10px] text-slate-500">Items registered in system</span>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-400">Page Stock Value</p>
+            <p className="text-xs font-medium text-slate-400">Loaded Stock Value</p>
             <DollarSign className="h-4 w-4 text-emerald-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">Rp {totalValue.toLocaleString("id-ID")}</p>
-          <span className="text-[10px] text-slate-500">Valuation of current page stock</span>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">Rp {stats.totalStockValue.toLocaleString("id-ID")}</p>
+          <span className="text-[10px] text-slate-500">Valuation of all database stock</span>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
@@ -287,7 +316,7 @@ function ProductsContent() {
             <p className="text-xs font-medium text-slate-400">Low Stock Warning</p>
             <CircleAlert className="h-4 w-4 text-amber-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{lowStockCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{stats.lowStockCount}</p>
           <span className="text-[10px] text-slate-500">Stock levels between 1 and 10</span>
         </div>
 
@@ -296,7 +325,7 @@ function ProductsContent() {
             <p className="text-xs font-medium text-slate-400">Out of Stock</p>
             <Layers className="h-4 w-4 text-rose-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{outOfStockCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{stats.outOfStockCount}</p>
           <span className="text-[10px] text-slate-500">Stock completely depleted</span>
         </div>
       </div>
@@ -348,16 +377,7 @@ function ProductsContent() {
             ))}
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-48 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
-                    <span className="text-sm text-slate-500">Loading catalog...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -371,10 +391,21 @@ function ProductsContent() {
                   ))}
                 </TableRow>
               ))
-            ) : (
+            ) : !loading ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-48 text-center text-slate-500">
                   No products matched your search.
+                </TableCell>
+              </TableRow>
+            ) : null}
+
+            {loading && page === 1 && (
+              <TableRow>
+                <TableCell colSpan={columns.length} className="h-48 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+                    <span className="text-sm text-slate-500">Loading catalog...</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -382,32 +413,15 @@ function ProductsContent() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {!loading && pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(page - 1)}
-            disabled={page <= 1}
-            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          >
-            Previous
-          </Button>
-          <div className="text-xs text-slate-500 mx-2">
-            Page <span className="text-slate-300 font-semibold">{page}</span> of <span className="text-slate-300 font-semibold">{pagination.totalPages}</span>
+      {/* Infinite Scroll Loader Spacer */}
+      <div ref={setObserverRef} className="h-16 flex items-center justify-center">
+        {loadingMore && (
+          <div className="flex items-center gap-2 text-indigo-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-xs text-slate-500">Loading more products...</span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(page + 1)}
-            disabled={page >= pagination.totalPages}
-            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          >
-            Next
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>

@@ -54,6 +54,13 @@ export async function getProducts(query: {
     if (cachedData) {
       console.log("Redis cache hit for key:", cacheKey);
       const result = JSON.parse(cachedData);
+      
+      // Populate stats if cached object was created before stats were introduced
+      if (!result.stats) {
+        result.stats = await productRepository.getStats();
+        await redis.setex(cacheKey, 3600, JSON.stringify(result));
+      }
+
       for (const item of result.items) {
         item.images = await getPresignedUrlsForKeys(item.images);
       }
@@ -75,11 +82,14 @@ export async function getProducts(query: {
     sortOrder,
   });
 
+  const stats = await productRepository.getStats();
+
   const hasNextPage = skip + repoResult.items.length < repoResult.total;
   const result = {
     total: repoResult.total,
     items: repoResult.items,
     hasNextPage,
+    stats,
   };
 
   // Store in cache for 1 hour (3600 seconds)

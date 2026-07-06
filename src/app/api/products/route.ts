@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
       success: true,
       data: result.items,
       message: "Products fetched successfully",
+      stats: result.stats,
       ...(result.total !== undefined && {
         pagination: {
           total: result.total,

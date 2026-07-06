@@ -41,7 +41,7 @@ WORKDIR /app
 # - netcat-openbsd: health-wait logic in entrypoint
 # - postgresql-client: raw SQL schema execution
 # - prisma CLI: db seed + migrations at startup
-RUN apk add --no-cache postgresql-client \
+RUN apk add --no-cache postgresql-client dos2unix \
     && npm install -g prisma@6.2.1 --ignore-scripts
 
 # Set production env
@@ -64,7 +64,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/database ./database
 
 # Copy entrypoint and fix permissions before dropping to non-root
 COPY --chown=nextjs:nodejs entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh
+RUN dos2unix ./entrypoint.sh && chmod +x ./entrypoint.sh
 
 # Switch to non-root user
 USER nextjs

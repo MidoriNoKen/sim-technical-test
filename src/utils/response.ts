@@ -15,6 +15,8 @@ export interface ApiResponseOptions<T = unknown> {
   data?: T;
   error?: unknown;
   message?: string;
+  stats?: any;
+  pagination?: any;
 }
 
 /**
@@ -40,7 +42,7 @@ function sanitizeErrorForProduction(error: unknown): unknown {
 }
 
 export function sendResponse<T>(
-  { success, data, error, message }: ApiResponseOptions<T>,
+  { success, data, error, message, stats, pagination }: ApiResponseOptions<T>,
   status: number = 200
 ) {
   return NextResponse.json(
@@ -49,6 +51,8 @@ export function sendResponse<T>(
       ...(data !== undefined && { data }),
       ...(error !== undefined && { error: sanitizeErrorForProduction(error) }),
       ...(message !== undefined && { message }),
+      ...(stats !== undefined && { stats }),
+      ...(pagination !== undefined && { pagination }),
     },
     { status }
   );

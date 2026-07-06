@@ -50,6 +50,12 @@ describe("Product Service - getProducts()", () => {
       items: [mockProduct],
     };
     vi.mocked(productRepository.findAll).mockResolvedValue(mockRepoResult);
+    vi.mocked(productRepository.getStats).mockResolvedValue({
+      totalProducts: 1,
+      totalStockValue: 5000000,
+      lowStockCount: 1,
+      outOfStockCount: 0,
+    });
 
     // Act
     const result = await getProducts({
@@ -66,6 +72,7 @@ describe("Product Service - getProducts()", () => {
     expect(result.total).toBe(1);
     expect(result.items).toHaveLength(1);
     expect(result.hasNextPage).toBe(false);
+    expect(result.stats).toBeDefined();
     expect(productRepository.findAll).toHaveBeenCalledWith({
       skip: 0,
       take: 10,

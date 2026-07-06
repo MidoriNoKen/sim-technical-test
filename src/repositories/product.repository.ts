@@ -73,3 +73,22 @@ export async function findAll({
 
   return { total, items };
 }
+
+export async function getStats() {
+  const allProducts = await prisma.product.findMany({
+    where: { deletedAt: null },
+    select: { price: true, stock: true },
+  });
+
+  const totalProducts = allProducts.length;
+  const totalStockValue = allProducts.reduce((sum, p) => sum + p.price * p.stock, 0);
+  const lowStockCount = allProducts.filter(p => p.stock > 0 && p.stock <= 10).length;
+  const outOfStockCount = allProducts.filter(p => p.stock === 0).length;
+
+  return {
+    totalProducts,
+    totalStockValue,
+    lowStockCount,
+    outOfStockCount,
+  };
+}
