@@ -6,7 +6,7 @@ import { usePathname } from "next/navigation"
 import { Package, Users, LogOut, Menu, Bell, User, ChevronDown, LayoutDashboard, ChevronLeft, ChevronRight } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { UserProfileMenu } from "@/components/shared/UserProfileMenu"
 import {
   DropdownMenu,

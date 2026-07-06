@@ -110,7 +110,7 @@ export default function CartPage() {
                     {item.product.name}
                   </h3>
                   <p className="text-emerald-400 font-bold text-xl">
-                    ${(item.product.price / 100).toFixed(2)}
+                    Rp {item.product.price.toLocaleString("id-ID")}
                   </p>
                 </div>
                 
@@ -168,15 +168,15 @@ export default function CartPage() {
             <div className="space-y-4 mb-6 text-slate-300">
               <div className="flex justify-between">
                 <span>Subtotal ({itemCount} items)</span>
-                <span className="font-semibold">${(totalPrice / 100).toFixed(2)}</span>
+                <span className="font-semibold">Rp {totalPrice.toLocaleString("id-ID")}</span>
               </div>
               <div className="flex justify-between">
                 <span>Estimated Tax (10%)</span>
-                <span className="font-semibold">${(taxAmount / 100).toFixed(2)}</span>
+                <span className="font-semibold">Rp {taxAmount.toLocaleString("id-ID")}</span>
               </div>
               <div className="border-t border-slate-800 pt-4 flex justify-between text-white text-lg font-bold">
                 <span>Total</span>
-                <span className="text-emerald-400">${(finalTotal / 100).toFixed(2)}</span>
+                <span className="text-emerald-400">Rp {finalTotal.toLocaleString("id-ID")}</span>
               </div>
             </div>
             

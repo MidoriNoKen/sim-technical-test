@@ -117,7 +117,7 @@ export default function ProductDetailPage() {
           </h1>
           
           <div className="text-3xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-200 bg-clip-text text-transparent mb-6 inline-block">
-            ${(product.price / 100).toFixed(2)}
+            Rp {product.price.toLocaleString("id-ID")}
           </div>
           
           <div className="prose prose-invert max-w-none mb-10 text-slate-400">

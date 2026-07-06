@@ -119,7 +119,7 @@ export default function CustomerOrdersPage() {
                     <div className="text-right">
                       <p className="text-sm text-slate-400 font-medium">Total Amount</p>
                       <p className="text-xl font-bold text-emerald-400">
-                        ${(order.totalAmount / 100).toFixed(2)}
+                        Rp {order.totalAmount.toLocaleString("id-ID")}
                       </p>
                     </div>
                     <div className={`px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-wider ${
@@ -161,13 +161,13 @@ export default function CustomerOrdersPage() {
                           {item.product?.name || "Unknown Product"}
                         </h5>
                         <p className="text-sm text-slate-400 mt-1">
-                          Qty: {item.quantity} × ${(item.priceAtPurchase / 100).toFixed(2)}
+                          Qty: {item.quantity} × Rp {item.priceAtPurchase.toLocaleString("id-ID")}
                         </p>
                       </div>
                       
                       <div className="text-right flex-shrink-0">
                         <p className="font-bold text-slate-300">
-                          ${((item.priceAtPurchase * item.quantity) / 100).toFixed(2)}
+                          Rp {(item.priceAtPurchase * item.quantity).toLocaleString("id-ID")}
                         </p>
                       </div>
                     </div>

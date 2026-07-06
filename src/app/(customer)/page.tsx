@@ -208,7 +208,7 @@ function StorefrontContent() {
                 </p>
                 <div className="flex items-center justify-between mt-auto">
                   <span className="text-xl font-bold bg-gradient-to-r from-emerald-400 to-emerald-200 bg-clip-text text-transparent">
-                    ${(product.price / 100).toFixed(2)}
+                    Rp {product.price.toLocaleString("id-ID")}
                   </span>
                   <span className="text-xs font-medium text-slate-500">
                     {product.stock} available
