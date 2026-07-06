@@ -215,15 +215,12 @@ export function AdminLayout({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-4">
             {/* Notification Dropdown */}
             <DropdownMenu>
-              <DropdownMenuTrigger render={
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="rounded-full border-slate-800 bg-slate-950 hover:bg-slate-850 text-slate-400 hover:text-slate-200 relative"
-                />
-              }>
+              <DropdownMenuTrigger className={cn(
+                buttonVariants({ variant: "outline", size: "icon" }),
+                "rounded-full h-9 w-9 border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-slate-400 hover:text-slate-200 relative transition-all duration-200"
+              )}>
                 <Bell className="h-4 w-4" />
-                <span className="absolute top-[5px] right-[7px] h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-slate-950 animate-pulse" />
+                <span className="absolute top-[6px] right-[8px] h-2 w-2 rounded-full bg-indigo-500 ring-2 ring-slate-950 animate-pulse" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-64 bg-slate-900 border-slate-800 text-slate-200 p-0 overflow-hidden">
                 <div className="bg-slate-800/50 px-4 py-3 font-semibold text-sm border-b border-slate-800">

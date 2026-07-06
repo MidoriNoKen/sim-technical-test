@@ -2,7 +2,8 @@
 
 import React from "react";
 import { LogOut, User, ChevronDown } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,14 +27,15 @@ export function UserProfileMenu({ role, onLogout, email, name }: UserProfileMenu
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" className="gap-2 border-slate-800 hover:bg-slate-850 text-slate-300 rounded-full sm:rounded-md px-2 sm:px-4">
-          <div className="flex h-6 w-6 sm:h-5 sm:w-5 items-center justify-center rounded bg-indigo-500/10 text-indigo-400 text-xs font-bold">
-            {initial}
-          </div>
-          <span className="text-xs font-medium hidden sm:inline">{defaultName}</span>
-          <ChevronDown className="h-3 w-3 text-slate-500 hidden sm:inline" />
-        </Button>
+      <DropdownMenuTrigger className={cn(
+        buttonVariants({ variant: "outline" }),
+        "h-9 gap-2 border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-slate-300 rounded-full sm:rounded-md px-2 sm:px-4 transition-all duration-200"
+      )}>
+        <div className="flex h-6 w-6 sm:h-5 sm:w-5 items-center justify-center rounded bg-indigo-500/10 text-indigo-400 text-xs font-bold border border-indigo-500/20">
+          {initial}
+        </div>
+        <span className="text-xs font-medium hidden sm:inline">{defaultName}</span>
+        <ChevronDown className="h-3 w-3 text-slate-500 hidden sm:inline transition-transform duration-200" />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-slate-200">
         <DropdownMenuLabel className="font-normal">

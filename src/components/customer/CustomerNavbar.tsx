@@ -32,13 +32,13 @@ export function CustomerNavbar() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-2 sm:gap-4">
-          <Link href="/orders" className={buttonVariants({ variant: "ghost", size: "sm", className: "text-slate-300 hover:text-white hover:bg-slate-800 flex" })}>
-            <FileText className="h-4 w-4 mr-2" />
-            My Orders
+        <div className="flex items-center gap-2 sm:gap-3">
+          <Link href="/orders" className={buttonVariants({ variant: "ghost", size: "sm", className: "h-9 text-slate-300 hover:text-slate-200 hover:bg-slate-800 flex transition-all duration-200" })}>
+            <FileText className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">My Orders</span>
           </Link>
 
-          <Link href="/cart" className={buttonVariants({ variant: "outline", size: "sm", className: "relative border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-200" })}>
+          <Link href="/cart" className={buttonVariants({ variant: "outline", size: "sm", className: "relative h-9 border-slate-800 bg-slate-950/50 hover:bg-slate-800 text-slate-300 hover:text-slate-200 transition-all duration-200" })}>
             <ShoppingCart className="h-4 w-4 mr-2" />
             Cart
             {itemCount > 0 && (
