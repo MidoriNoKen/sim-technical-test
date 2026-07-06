@@ -49,9 +49,13 @@ const mockProduct = {
 const mockOrder = {
   id: "order-uuid-1",
   userId: "user-uuid-1",
+  status: "PENDING",
   totalAmount: 1000000,
+  verifiedById: null,
   createdAt: new Date(),
   updatedAt: new Date(),
+  user: { email: "test@test.com" },
+  verifiedBy: null,
   orderItems: [
     {
       id: "item-uuid-1",
@@ -59,6 +63,10 @@ const mockOrder = {
       productId: "product-uuid-1",
       quantity: 2,
       priceAtPurchase: 500000,
+      product: {
+        name: "Wireless Mouse",
+        price: 500000,
+      },
     },
   ],
 };
@@ -144,7 +152,7 @@ describe("Order Service - updateOrderStatus()", () => {
     const result = await updateOrderStatus("order-uuid-1", "user-uuid-1", "COMPLETED");
 
     // Assert
-    expect(result.status).toBe("COMPLETED");
+    expect(result?.status).toBe("COMPLETED");
     expect(orderRepository.updateOrderStatus).toHaveBeenCalledWith(txMock, "order-uuid-1", "COMPLETED", null);
   });
 
@@ -161,7 +169,7 @@ describe("Order Service - updateOrderStatus()", () => {
     const result = await updateOrderStatus("order-uuid-1", "user-uuid-1", "VERIFIED");
 
     // Assert
-    expect(result.status).toBe("VERIFIED");
+    expect(result?.status).toBe("VERIFIED");
     expect(orderRepository.updateOrderStatus).toHaveBeenCalledWith(txMock, "order-uuid-1", "VERIFIED", "user-uuid-1");
   });
 
