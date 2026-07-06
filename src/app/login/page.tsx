@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || "/admin/products";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -39,7 +38,20 @@ function LoginForm() {
         return;
       }
 
-      router.push(redirectTo);
+      const role = data.data?.user?.role;
+      const requestedRedirect = searchParams.get("redirect");
+      
+      let finalRedirect = role === "ADMIN" ? "/admin/products" : "/";
+      
+      if (requestedRedirect) {
+        if (role === "ADMIN" && requestedRedirect.startsWith("/admin")) {
+          finalRedirect = requestedRedirect;
+        } else if (role === "CUSTOMER" && !requestedRedirect.startsWith("/admin")) {
+          finalRedirect = requestedRedirect;
+        }
+      }
+
+      router.push(finalRedirect);
     } catch {
       setError("Network error. Please try again.");
       setLoading(false);

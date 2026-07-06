@@ -48,7 +48,7 @@ function setSecurityHeaders(response: NextResponse): void {
 
 const MAX_BODY_SIZE = 100_000; // 100KB max request body
 
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
@@ -79,6 +79,8 @@ export async function proxy(request: NextRequest) {
   const isOrdersRoute = pathname.startsWith("/api/orders");
   const isProductsRoute = pathname.startsWith("/api/products");
   const isAdminRoute = pathname.startsWith("/admin");
+  const isCustomerRoute = pathname === "/" || pathname === "/cart" || pathname === "/orders" || pathname.startsWith("/products/");
+  const isApiRoute = pathname.startsWith("/api/");
 
   // 3. Redis-based rate limiting check with endpoint-specific limits
   let rateLimitHeaders: Record<string, string> = {};
@@ -133,8 +135,8 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!token) {
-      // For admin routes, redirect to login page instead of returning JSON
-      if (isAdminRoute) {
+      // For page routes, redirect to login page instead of returning JSON
+      if (isAdminRoute || isCustomerRoute) {
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("redirect", pathname);
         const response = NextResponse.redirect(loginUrl);
@@ -165,6 +167,14 @@ export async function proxy(request: NextRequest) {
         return response;
       }
 
+      // For customer routes, optionally we could restrict admins from accessing them (or just let them)
+      if (isCustomerRoute && payload.role !== "CUSTOMER") {
+        // Redirect admin to admin dashboard if they try to access storefront
+        const response = NextResponse.redirect(new URL("/admin/products", request.url));
+        setSecurityHeaders(response);
+        return response;
+      }
+
       // Clone request headers and insert user info
       const requestHeaders = new Headers(request.headers);
       requestHeaders.set("x-user-id", payload.userId as string);
@@ -182,8 +192,8 @@ export async function proxy(request: NextRequest) {
       setSecurityHeaders(response);
       return response;
     } catch {
-      // For admin routes, redirect to login page on invalid token
-      if (isAdminRoute) {
+      // For page routes, redirect to login page on invalid token
+      if (isAdminRoute || isCustomerRoute) {
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("redirect", pathname);
         const response = NextResponse.redirect(loginUrl);
@@ -208,7 +218,14 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Match API routes and admin routes (Next.js static assets are at /_next/ so they are never matched)
+// Match API routes, admin routes, and customer page routes
 export const config = {
-  matcher: ["/api/:path*", "/admin/:path*"],
+  matcher: [
+    "/",
+    "/cart",
+    "/orders",
+    "/products/:path*",
+    "/api/:path*",
+    "/admin/:path*",
+  ],
 };
