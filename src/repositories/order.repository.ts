@@ -61,12 +61,25 @@ export async function findOrdersByUserId(userId: string) {
 export async function findAllOrders(params: {
   page: number;
   limit: number;
-  search?: string;
+  search?: string | null;
+  status?: string | null;
+  minAmount?: number;
+  maxAmount?: number;
+  sortBy?: "totalAmount" | "createdAt";
+  sortOrder?: "asc" | "desc";
 }) {
-  const { page, limit, search } = params;
+  const { page, limit, search, status, minAmount, maxAmount, sortBy = "createdAt", sortOrder = "desc" } = params;
   const skip = (page - 1) * limit;
 
-  const where: Prisma.OrderWhereInput = {};
+  const where: Prisma.OrderWhereInput = {
+    ...(status && { status }),
+    ...((minAmount !== undefined || maxAmount !== undefined) && {
+      totalAmount: {
+        ...(minAmount !== undefined && { gte: minAmount }),
+        ...(maxAmount !== undefined && { lte: maxAmount }),
+      },
+    }),
+  };
 
   if (search) {
     where.OR = [
@@ -98,11 +111,13 @@ export async function findAllOrders(params: {
         },
       },
       orderBy: {
-        createdAt: "desc",
+        [sortBy]: sortOrder,
       },
     }),
     prisma.order.count({ where }),
   ]);
+
+  const hasNextPage = skip + data.length < total;
 
   return {
     data,
@@ -111,6 +126,7 @@ export async function findAllOrders(params: {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
+      hasNextPage,
     },
   };
 }

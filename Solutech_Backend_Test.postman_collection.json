@@ -71,7 +71,7 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/products?page=1&limit=10&search=Mouse",
+              "raw": "{{base_url}}/api/products?page=1&limit=10&search=Mouse&minPrice=10000&maxPrice=500000&sortBy=price&sortOrder=asc",
               "host": [
                 "{{base_url}}"
               ],
@@ -94,6 +94,26 @@
                   "key": "search",
                   "value": "Mouse",
                   "description": "Case-insensitive product name filter"
+                },
+                {
+                  "key": "minPrice",
+                  "value": "10000",
+                  "description": "Minimum product price"
+                },
+                {
+                  "key": "maxPrice",
+                  "value": "500000",
+                  "description": "Maximum product price"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "price",
+                  "description": "Sort fields criteria"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "asc",
+                  "description": "Sorting order (asc/desc)"
                 }
               ]
             },
@@ -273,16 +293,58 @@
               }
             ],
             "url": {
-              "raw": "{{base_url}}/api/orders",
+              "raw": "{{base_url}}/api/orders?page=1&limit=10&search=customer@test.com&status=PENDING&minAmount=1000&maxAmount=500000&sortBy=totalAmount&sortOrder=desc",
               "host": [
                 "{{base_url}}"
               ],
               "path": [
                 "api",
                 "orders"
+              ],
+              "query": [
+                {
+                  "key": "page",
+                  "value": "1",
+                  "description": "Page index (Admin only)"
+                },
+                {
+                  "key": "limit",
+                  "value": "10",
+                  "description": "Orders limit count (Admin only)"
+                },
+                {
+                  "key": "search",
+                  "value": "customer@test.com",
+                  "description": "Filter by user email (Admin only)"
+                },
+                {
+                  "key": "status",
+                  "value": "PENDING",
+                  "description": "Filter by order status (Admin only)"
+                },
+                {
+                  "key": "minAmount",
+                  "value": "1000",
+                  "description": "Minimum order amount (Admin only)"
+                },
+                {
+                  "key": "maxAmount",
+                  "value": "500000",
+                  "description": "Maximum order amount (Admin only)"
+                },
+                {
+                  "key": "sortBy",
+                  "value": "totalAmount",
+                  "description": "Sort fields criteria (Admin only)"
+                },
+                {
+                  "key": "sortOrder",
+                  "value": "desc",
+                  "description": "Sort orientation (Admin only)"
+                }
               ]
             },
-            "description": "Fetches the order history for the currently logged-in user."
+            "description": "Fetches the order history for the currently logged-in user. Admins get all orders with pagination & filters."
           },
           "response": []
         },

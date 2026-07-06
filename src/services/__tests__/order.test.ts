@@ -31,7 +31,7 @@ vi.mock("@/lib/prisma", () => ({
 }));
 
 // Import service and repository AFTER mocks are declared
-import { createOrder, updateOrderStatus, deleteOrder } from "@/services/order.service";
+import { createOrder, updateOrderStatus, deleteOrder, getAllOrders } from "@/services/order.service";
 import * as orderRepository from "@/repositories/order.repository";
 
 // ─── Fixtures ────────────────────────────────────────────────────────────────
@@ -236,6 +236,53 @@ describe("Order Service - deleteOrder()", () => {
     // Assert
     expect(txMock.product.update).not.toHaveBeenCalled();
     expect(orderRepository.deleteOrder).toHaveBeenCalledOnce();
+  });
+});
+
+describe("Order Service - getAllOrders()", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should retrieve all orders with advanced filtering and pagination metadata", async () => {
+    // Arrange
+    const mockRepoResult = {
+      data: [mockOrder],
+      pagination: {
+        total: 1,
+        page: 1,
+        limit: 10,
+        totalPages: 1,
+        hasNextPage: false,
+      },
+    };
+    vi.mocked(orderRepository.findAllOrders).mockResolvedValue(mockRepoResult);
+
+    // Act
+    const result = await getAllOrders({
+      page: 1,
+      limit: 10,
+      search: "test@test.com",
+      status: "PENDING",
+      minAmount: 1000,
+      maxAmount: 5000000,
+      sortBy: "totalAmount",
+      sortOrder: "desc",
+    });
+
+    // Assert
+    expect(result.data).toHaveLength(1);
+    expect(result.pagination.hasNextPage).toBe(false);
+    expect(orderRepository.findAllOrders).toHaveBeenCalledWith({
+      page: 1,
+      limit: 10,
+      search: "test@test.com",
+      status: "PENDING",
+      minAmount: 1000,
+      maxAmount: 5000000,
+      sortBy: "totalAmount",
+      sortOrder: "desc",
+    });
   });
 });
 

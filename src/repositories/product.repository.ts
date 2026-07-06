@@ -32,10 +32,18 @@ export async function findAll({
   skip,
   take,
   search,
+  minPrice,
+  maxPrice,
+  sortBy = "createdAt",
+  sortOrder = "desc",
 }: {
   skip: number;
   take: number;
   search?: string | null;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: "price" | "createdAt" | "stock" | "name";
+  sortOrder?: "asc" | "desc";
 }) {
   const where: Prisma.ProductWhereInput = {
     deletedAt: null,
@@ -43,6 +51,12 @@ export async function findAll({
       name: {
         contains: search,
         mode: "insensitive",
+      },
+    }),
+    ...((minPrice !== undefined || maxPrice !== undefined) && {
+      price: {
+        ...(minPrice !== undefined && { gte: minPrice }),
+        ...(maxPrice !== undefined && { lte: maxPrice }),
       },
     }),
   };
@@ -53,7 +67,7 @@ export async function findAll({
       where,
       skip,
       take,
-      orderBy: { createdAt: "desc" },
+      orderBy: { [sortBy]: sortOrder },
     }),
   ]);
 

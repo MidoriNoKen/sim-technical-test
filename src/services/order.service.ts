@@ -99,7 +99,12 @@ export async function getUserOrders(userId: string) {
 export async function getAllOrders(params: {
   page: number;
   limit: number;
-  search?: string;
+  search?: string | null;
+  status?: string | null;
+  minAmount?: number;
+  maxAmount?: number;
+  sortBy?: "totalAmount" | "createdAt";
+  sortOrder?: "asc" | "desc";
 }) {
   return orderRepository.findAllOrders(params);
 }
