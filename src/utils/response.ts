@@ -15,8 +15,8 @@ export interface ApiResponseOptions<T = unknown> {
   data?: T;
   error?: unknown;
   message?: string;
-  stats?: any;
-  pagination?: any;
+  stats?: unknown;
+  pagination?: unknown;
 }
 
 /**

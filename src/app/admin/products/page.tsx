@@ -47,6 +47,10 @@ function ProductsContent() {
   const searchParams = useSearchParams()
 
   const search = searchParams.get("search") || ""
+  const minPrice = searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : null
+  const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : null
+  const sortBy = searchParams.get("sortBy") || "createdAt"
+  const sortOrder = searchParams.get("sortOrder") || "desc"
 
   const [products, setProducts] = useState<Product[]>([])
   const [page, setPage] = useState(1)
@@ -65,10 +69,11 @@ function ProductsContent() {
   const [isDeleting, setIsDeleting] = useState(false)
   const [refreshKey, setRefreshKey] = useState(0)
 
-  // Sync state with search param: reset page & products when search changes
-  const [prevSearch, setPrevSearch] = useState(search)
-  if (search !== prevSearch) {
-    setPrevSearch(search)
+  // Sync state with search params: reset page & products when parameters change
+  const currentParamsString = searchParams.toString()
+  const [prevParamsString, setPrevParamsString] = useState(currentParamsString)
+  if (currentParamsString !== prevParamsString) {
+    setPrevParamsString(currentParamsString)
     setProducts([])
     setPage(1)
     setHasNextPage(false)
@@ -89,6 +94,10 @@ function ProductsContent() {
         params.set("page", page.toString())
         params.set("limit", "10")
         if (search) params.set("search", search)
+        if (minPrice !== null) params.set("minPrice", minPrice.toString())
+        if (maxPrice !== null) params.set("maxPrice", maxPrice.toString())
+        params.set("sortBy", sortBy)
+        params.set("sortOrder", sortOrder)
 
         const res = await fetch(`/api/products?${params.toString()}`, {
           credentials: "include",
@@ -140,7 +149,7 @@ function ProductsContent() {
     return () => {
       cancelled = true
     }
-  }, [page, search, router, refreshKey])
+  }, [page, search, minPrice, maxPrice, sortBy, sortOrder, router, refreshKey])
 
   const [observerRef, setObserverRef] = useState<HTMLDivElement | null>(null)
 
@@ -160,13 +169,27 @@ function ProductsContent() {
     return () => observer.disconnect()
   }, [observerRef, hasNextPage, loading, loadingMore])
 
-  function handleSearch(e: React.FormEvent<HTMLFormElement>) {
+  function handleFilterSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
     const q = formData.get("search") as string
+    const minP = formData.get("minPrice") as string
+    const maxP = formData.get("maxPrice") as string
+    const sortB = formData.get("sortBy") as string
+    const sortO = formData.get("sortOrder") as string
+    
     const params = new URLSearchParams()
     if (q) params.set("search", q)
+    if (minP) params.set("minPrice", minP)
+    if (maxP) params.set("maxPrice", maxP)
+    params.set("sortBy", sortB)
+    params.set("sortOrder", sortO)
+
     router.push(`/admin/products?${params.toString()}`)
+  }
+
+  function handleResetFilters() {
+    router.push("/admin/products")
   }
 
   async function handleDeleteConfirm() {
@@ -330,22 +353,87 @@ function ProductsContent() {
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+      {/* Advanced Filter UI */}
+      <div className="rounded-xl border border-slate-800 bg-slate-900/10 p-5 shadow-xl backdrop-blur-sm">
+        <form onSubmit={handleFilterSubmit} className="grid gap-4 sm:grid-cols-2 md:grid-cols-5 items-end">
+          {/* Search */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400">Search</label>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+              <Input
+                type="search"
+                name="search"
+                placeholder="Product name..."
+                defaultValue={search}
+                className="pl-9 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+              />
+            </div>
+          </div>
+          
+          {/* Min Price */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400">Min Price (Rp)</label>
             <Input
-              type="search"
-              name="search"
-              placeholder="Search by product name..."
-              defaultValue={search}
-              className="pl-9 bg-slate-900/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+              type="number"
+              name="minPrice"
+              placeholder="e.g. 10000"
+              defaultValue={minPrice || ""}
+              className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-650 focus-visible:ring-indigo-500"
             />
           </div>
-          <Button type="submit" variant="secondary" className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60">
-            Search
-          </Button>
+
+          {/* Max Price */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400">Max Price (Rp)</label>
+            <Input
+              type="number"
+              name="maxPrice"
+              placeholder="e.g. 500000"
+              defaultValue={maxPrice || ""}
+              className="bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-650 focus-visible:ring-indigo-500"
+            />
+          </div>
+
+          {/* Sort By */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-400">Sort By</label>
+            <div className="flex gap-2">
+              <select
+                name="sortBy"
+                defaultValue={sortBy}
+                className="flex-1 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option className="bg-slate-900 text-slate-200" value="createdAt">Date Created</option>
+                <option className="bg-slate-900 text-slate-200" value="name">Product Name</option>
+                <option className="bg-slate-900 text-slate-200" value="price">Price</option>
+                <option className="bg-slate-900 text-slate-200" value="stock">Stock Level</option>
+              </select>
+              <select
+                name="sortOrder"
+                defaultValue={sortOrder}
+                className="w-20 rounded-md border border-slate-800 bg-slate-950/40 py-2 px-1.5 text-xs text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
+              >
+                <option className="bg-slate-900 text-slate-200" value="desc">Desc</option>
+                <option className="bg-slate-900 text-slate-250" value="asc">Asc</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2">
+            <Button type="submit" className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+              Apply
+            </Button>
+            <Button 
+              type="button" 
+              onClick={handleResetFilters}
+              variant="outline" 
+              className="border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+            >
+              Reset
+            </Button>
+          </div>
         </form>
       </div>
 
