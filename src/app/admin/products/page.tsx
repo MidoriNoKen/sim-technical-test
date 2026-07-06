@@ -230,41 +230,15 @@ function ProductsContent() {
       cell: ({ row }) => {
         const product = row.original
         return (
-          <DropdownMenu>
-            <DropdownMenuTrigger render={
-              <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-200 hover:bg-slate-800/40" />
-            }>
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-slate-900 border-slate-800 text-slate-200">
-                <DropdownMenuLabel className="text-slate-400">Actions</DropdownMenuLabel>
-                <DropdownMenuItem 
-                  onClick={() => router.push(`/admin/products/${product.id}`)}
-                  className="cursor-pointer"
-                >
-                  <Eye className="mr-2 h-4 w-4" />
-                  View Details
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => router.push(`/admin/products/${product.id}/edit`)}
-                  className="cursor-pointer"
-                >
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit Product
-                </DropdownMenuItem>
-              <DropdownMenuItem 
-                onClick={(e) => {
-                  e.preventDefault()
-                  setDeleteId(product.id)
-                }}
-                className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer"
-              >
-                <Trash className="mr-2 h-4 w-4" />
-                Delete Product
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => router.push(`/admin/products/${product.id}`)}
+            className="text-slate-400 hover:text-indigo-400 hover:bg-slate-800/40 gap-1.5"
+          >
+            <Eye className="h-4 w-4" />
+            View
+          </Button>
         )
       },
     },

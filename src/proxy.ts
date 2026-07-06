@@ -33,8 +33,8 @@ function setSecurityHeaders(response: NextResponse): void {
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // unsafe-eval needed by Next.js runtime
       "style-src 'self' 'unsafe-inline'",               // unsafe-inline needed by Tailwind/Next.js
       "font-src 'self' data:",
-      "img-src 'self' data: blob:",
-      "connect-src 'self'",
+      "img-src 'self' data: blob: https://*.amazonaws.com",
+      "connect-src 'self' https://*.amazonaws.com",
       "frame-ancestors 'none'",
       "base-uri 'self'",
     ].join("; ")
@@ -55,10 +55,13 @@ export async function proxy(request: NextRequest) {
   // Extract client IP address from headers (x-forwarded-for set by reverse proxy)
   const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
 
-  // 1. Request body size limiting for write methods
+  // 1. Request body size limiting for write methods (bypass for multipart/form-data uploads)
   if (["POST", "PUT", "PATCH"].includes(method)) {
+    const contentType = request.headers.get("content-type") || "";
+    const isMultipart = contentType.includes("multipart/form-data");
+    
     const contentLength = request.headers.get("content-length");
-    if (contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
+    if (!isMultipart && contentLength && parseInt(contentLength, 10) > MAX_BODY_SIZE) {
       logger.warn({ method, url: pathname, ip, contentLength }, "Request body too large");
       const response = NextResponse.json(
         { success: false, message: "Request body too large" },

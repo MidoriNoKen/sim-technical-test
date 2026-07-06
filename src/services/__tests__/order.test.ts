@@ -66,6 +66,8 @@ const mockOrder = {
       product: {
         name: "Wireless Mouse",
         price: 500000,
+        description: "A wireless mouse",
+        images: [],
       },
     },
   ],
