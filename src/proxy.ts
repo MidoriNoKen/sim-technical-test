@@ -48,7 +48,7 @@ function setSecurityHeaders(response: NextResponse): void {
 
 const MAX_BODY_SIZE = 100_000; // 100KB max request body
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 

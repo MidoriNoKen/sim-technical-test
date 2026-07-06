@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Package, ShoppingCart, User, LogOut, FileText } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
 import {
   DropdownMenu,
@@ -40,31 +40,25 @@ export function CustomerNavbar() {
         </Link>
 
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild className="text-slate-300 hover:text-white hover:bg-slate-800 hidden sm:flex">
-            <Link href="/orders">
-              <FileText className="h-4 w-4 mr-2" />
-              My Orders
-            </Link>
-          </Button>
+          <Link href="/orders" className={buttonVariants({ variant: "ghost", size: "sm", className: "text-slate-300 hover:text-white hover:bg-slate-800 hidden sm:flex" })}>
+            <FileText className="h-4 w-4 mr-2" />
+            My Orders
+          </Link>
 
-          <Button variant="outline" size="sm" asChild className="relative border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-200">
-            <Link href="/cart">
-              <ShoppingCart className="h-4 w-4 mr-2" />
-              Cart
-              {itemCount > 0 && (
-                <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-slate-950">
-                  {itemCount}
-                </span>
-              )}
-            </Link>
-          </Button>
+          <Link href="/cart" className={buttonVariants({ variant: "outline", size: "sm", className: "relative border-slate-700 bg-slate-900/50 hover:bg-slate-800 text-slate-200" })}>
+            <ShoppingCart className="h-4 w-4 mr-2" />
+            Cart
+            {itemCount > 0 && (
+              <span className="absolute -top-2 -right-2 flex h-5 w-5 items-center justify-center rounded-full bg-indigo-500 text-[10px] font-bold text-white shadow-sm ring-2 ring-slate-950">
+                {itemCount}
+              </span>
+            )}
+          </Link>
 
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="rounded-full border border-slate-800 bg-slate-900/50 text-slate-300 hover:text-white hover:bg-slate-800 h-9 w-9">
-                <User className="h-4 w-4" />
-                <span className="sr-only">User Menu</span>
-              </Button>
+            <DropdownMenuTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-full border border-slate-800 bg-slate-900/50 text-slate-300 hover:text-white hover:bg-slate-800 h-9 w-9" })}>
+              <User className="h-4 w-4" />
+              <span className="sr-only">User Menu</span>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-slate-200">
               <DropdownMenuLabel className="font-normal">
@@ -73,11 +67,9 @@ export function CustomerNavbar() {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator className="bg-slate-800" />
-              <DropdownMenuItem asChild className="cursor-pointer focus:bg-slate-800 focus:text-slate-100 sm:hidden">
-                <Link href="/orders">
-                  <FileText className="mr-2 h-4 w-4" />
-                  <span>My Orders</span>
-                </Link>
+              <DropdownMenuItem onClick={() => router.push("/orders")} className="cursor-pointer focus:bg-slate-800 focus:text-slate-100 sm:hidden">
+                <FileText className="mr-2 h-4 w-4" />
+                <span>My Orders</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 focus:bg-red-950/50 focus:text-red-300">
                 <LogOut className="mr-2 h-4 w-4" />
