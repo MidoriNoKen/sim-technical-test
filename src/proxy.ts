@@ -136,8 +136,18 @@ export async function proxy(request: NextRequest) {
     }
 
     if (!token) {
-      // For page routes that STRICTLY require auth, redirect to login page
-      if (isAdminRoute || pathname === "/orders") {
+      // Allow unauthenticated access to /login ONLY
+      if (isLoginRoute) {
+        const response = NextResponse.next();
+        Object.entries(rateLimitHeaders).forEach(([key, value]) => {
+          response.headers.set(key, value);
+        });
+        setSecurityHeaders(response);
+        return response;
+      }
+
+      // For page routes, redirect to login page
+      if (isAdminRoute || isCustomerRoute) {
         const loginUrl = new URL("/login", request.url);
         loginUrl.searchParams.set("redirect", pathname);
         const response = NextResponse.redirect(loginUrl);
@@ -145,6 +155,7 @@ export async function proxy(request: NextRequest) {
         return response;
       }
       
+      // For API routes, return 401 JSON
       if (isOrdersRoute || isProductsRoute) {
         const response = NextResponse.json(
           { success: false, message: "Unauthorized: Token missing" },
@@ -154,7 +165,6 @@ export async function proxy(request: NextRequest) {
         return response;
       }
 
-      // Allow unauthenticated access to /login, /, /cart, /products/*
       const response = NextResponse.next();
       Object.entries(rateLimitHeaders).forEach(([key, value]) => {
         response.headers.set(key, value);

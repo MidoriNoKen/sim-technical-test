@@ -5,14 +5,7 @@ import { useRouter } from "next/navigation";
 import { Package, ShoppingCart, User, LogOut, FileText } from "lucide-react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { useCart } from "@/context/CartContext";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { UserProfileMenu } from "@/components/shared/UserProfileMenu";
 
 export function CustomerNavbar() {
   const router = useRouter();
@@ -39,8 +32,8 @@ export function CustomerNavbar() {
           </span>
         </Link>
 
-        <div className="flex items-center gap-4">
-          <Link href="/orders" className={buttonVariants({ variant: "ghost", size: "sm", className: "text-slate-300 hover:text-white hover:bg-slate-800 hidden sm:flex" })}>
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Link href="/orders" className={buttonVariants({ variant: "ghost", size: "sm", className: "text-slate-300 hover:text-white hover:bg-slate-800 flex" })}>
             <FileText className="h-4 w-4 mr-2" />
             My Orders
           </Link>
@@ -55,28 +48,7 @@ export function CustomerNavbar() {
             )}
           </Link>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger className={buttonVariants({ variant: "ghost", size: "icon", className: "rounded-full border border-slate-800 bg-slate-900/50 text-slate-300 hover:text-white hover:bg-slate-800 h-9 w-9" })}>
-              <User className="h-4 w-4" />
-              <span className="sr-only">User Menu</span>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-56 bg-slate-900 border-slate-800 text-slate-200">
-              <DropdownMenuLabel className="font-normal">
-                <div className="flex flex-col space-y-1">
-                  <p className="text-sm font-medium leading-none text-slate-100">My Account</p>
-                </div>
-              </DropdownMenuLabel>
-              <DropdownMenuSeparator className="bg-slate-800" />
-              <DropdownMenuItem onClick={() => router.push("/orders")} className="cursor-pointer focus:bg-slate-800 focus:text-slate-100 sm:hidden">
-                <FileText className="mr-2 h-4 w-4" />
-                <span>My Orders</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={handleLogout} className="cursor-pointer text-red-400 focus:bg-red-950/50 focus:text-red-300">
-                <LogOut className="mr-2 h-4 w-4" />
-                <span>Log out</span>
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <UserProfileMenu role="CUSTOMER" onLogout={handleLogout} />
         </div>
       </div>
     </nav>
