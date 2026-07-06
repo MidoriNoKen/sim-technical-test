@@ -37,19 +37,30 @@ export async function getProducts(query: {
   page: number;
   limit: number;
   search?: string | null;
+  minPrice?: number;
+  maxPrice?: number;
+  sortBy?: "price" | "createdAt" | "stock" | "name";
+  sortOrder?: "asc" | "desc";
 }) {
-  const { page, limit, search } = query;
+  const { page, limit, search, minPrice, maxPrice, sortBy = "createdAt", sortOrder = "desc" } = query;
   const skip = (page - 1) * limit;
   const take = limit;
 
-  // Construct cache key
-  const cacheKey = `${CACHE_PREFIX}page:${page}:limit:${limit}:search:${search || "none"}`;
+  // Construct cache key including the new filters
+  const cacheKey = `${CACHE_PREFIX}page:${page}:limit:${limit}:search:${search || "none"}:minPrice:${minPrice ?? "none"}:maxPrice:${maxPrice ?? "none"}:sortBy:${sortBy}:sortOrder:${sortOrder}`;
 
   try {
     const cachedData = await redis.get(cacheKey);
     if (cachedData) {
       console.log("Redis cache hit for key:", cacheKey);
       const result = JSON.parse(cachedData);
+      
+      // Populate stats if cached object was created before stats were introduced
+      if (!result.stats) {
+        result.stats = await productRepository.getStats();
+        await redis.setex(cacheKey, 3600, JSON.stringify(result));
+      }
+
       for (const item of result.items) {
         item.images = await getPresignedUrlsForKeys(item.images);
       }
@@ -61,7 +72,25 @@ export async function getProducts(query: {
 
   // Cache miss
   console.log("Redis cache miss for key:", cacheKey);
-  const result = await productRepository.findAll({ skip, take, search });
+  const repoResult = await productRepository.findAll({
+    skip,
+    take,
+    search,
+    minPrice,
+    maxPrice,
+    sortBy,
+    sortOrder,
+  });
+
+  const stats = await productRepository.getStats();
+
+  const hasNextPage = skip + repoResult.items.length < repoResult.total;
+  const result = {
+    total: repoResult.total,
+    items: repoResult.items,
+    hasNextPage,
+    stats,
+  };
 
   // Store in cache for 1 hour (3600 seconds)
   try {

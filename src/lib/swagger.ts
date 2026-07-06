@@ -111,6 +111,30 @@ export const getApiDocs = () => {
                 schema: { type: "string" },
                 description: "Case-insensitive query search against product names",
               },
+              {
+                name: "minPrice",
+                in: "query",
+                schema: { type: "integer" },
+                description: "Minimum product price filter",
+              },
+              {
+                name: "maxPrice",
+                in: "query",
+                schema: { type: "integer" },
+                description: "Maximum product price filter",
+              },
+              {
+                name: "sortBy",
+                in: "query",
+                schema: { type: "string", enum: ["price", "createdAt", "stock", "name"], default: "createdAt" },
+                description: "Sort fields criteria",
+              },
+              {
+                name: "sortOrder",
+                in: "query",
+                schema: { type: "string", enum: ["asc", "desc"], default: "desc" },
+                description: "Sorting orientation order",
+              },
             ],
             responses: {
               200: {
@@ -139,10 +163,11 @@ export const getApiDocs = () => {
                         pagination: {
                           type: "object",
                           properties: {
-                            totalItems: { type: "integer" },
-                            totalPages: { type: "integer" },
-                            currentPage: { type: "integer" },
+                            total: { type: "integer" },
+                            page: { type: "integer" },
                             limit: { type: "integer" },
+                            totalPages: { type: "integer" },
+                            hasNextPage: { type: "boolean" },
                           },
                         },
                         message: { type: "string", example: "Products fetched successfully" },
@@ -285,11 +310,96 @@ export const getApiDocs = () => {
         "/api/orders": {
           get: {
             tags: ["Orders"],
-            summary: "Get order history for authenticated user",
+            summary: "Get order history for authenticated user (Admins get all with pagination & filters)",
             security: [{ BearerAuth: [] }],
+            parameters: [
+              {
+                name: "page",
+                in: "query",
+                schema: { type: "integer", default: 1 },
+                description: "Page index (Admin only)",
+              },
+              {
+                name: "limit",
+                in: "query",
+                schema: { type: "integer", default: 10 },
+                description: "Orders limit count (Admin only)",
+              },
+              {
+                name: "search",
+                in: "query",
+                schema: { type: "string" },
+                description: "Filter by user email (Admin only)",
+              },
+              {
+                name: "status",
+                in: "query",
+                schema: { type: "string", enum: ["PENDING", "VERIFIED", "COMPLETED", "CANCELLED"] },
+                description: "Filter by order status (Admin only)",
+              },
+              {
+                name: "minAmount",
+                in: "query",
+                schema: { type: "integer" },
+                description: "Minimum order amount filter (Admin only)",
+              },
+              {
+                name: "maxAmount",
+                in: "query",
+                schema: { type: "integer" },
+                description: "Maximum order amount filter (Admin only)",
+              },
+              {
+                name: "sortBy",
+                in: "query",
+                schema: { type: "string", enum: ["totalAmount", "createdAt"], default: "createdAt" },
+                description: "Sort fields criteria (Admin only)",
+              },
+              {
+                name: "sortOrder",
+                in: "query",
+                schema: { type: "string", enum: ["asc", "desc"], default: "desc" },
+                description: "Sort orientation (Admin only)",
+              },
+            ],
             responses: {
               200: {
-                description: "User order list",
+                description: "User order list or paginated Admin list",
+                content: {
+                  "application/json": {
+                    schema: {
+                      type: "object",
+                      properties: {
+                        success: { type: "boolean", example: true },
+                        data: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              id: { type: "string", format: "uuid" },
+                              userId: { type: "string", format: "uuid" },
+                              totalAmount: { type: "integer" },
+                              status: { type: "string" },
+                              verifiedById: { type: "string", format: "uuid", nullable: true },
+                              createdAt: { type: "string", format: "date-time" },
+                              updatedAt: { type: "string", format: "date-time" },
+                            },
+                          },
+                        },
+                        pagination: {
+                          type: "object",
+                          properties: {
+                            total: { type: "integer" },
+                            page: { type: "integer" },
+                            limit: { type: "integer" },
+                            totalPages: { type: "integer" },
+                            hasNextPage: { type: "boolean" },
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
               },
               401: {
                 description: "Unauthorized",

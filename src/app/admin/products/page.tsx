@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { MoreHorizontal, Plus, Search, Trash, Edit, Eye, Loader2, Package, CircleAlert, DollarSign, Layers } from "lucide-react"
+import { Plus, Search, Eye, Loader2, Package, CircleAlert, DollarSign, Layers, SlidersHorizontal } from "lucide-react"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
 import {
@@ -23,13 +23,6 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   AlertDialog,
   AlertDialogAction,
   AlertDialogCancel,
@@ -48,39 +41,78 @@ interface Product {
   stock: number
 }
 
-interface Pagination {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
 
 function ProductsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
+  const search = searchParams.get("search") || ""
+  const minPrice = searchParams.get("minPrice") ? Number(searchParams.get("minPrice")) : null
+  const maxPrice = searchParams.get("maxPrice") ? Number(searchParams.get("maxPrice")) : null
+  const sortBy = searchParams.get("sortBy") || "createdAt"
+  const sortOrder = searchParams.get("sortOrder") || "desc"
+
+  const [localSearch, setLocalSearch] = useState(search)
+  const [localMinPrice, setLocalMinPrice] = useState(searchParams.get("minPrice") || "")
+  const [localMaxPrice, setLocalMaxPrice] = useState(searchParams.get("maxPrice") || "")
+  const [localSortBy, setLocalSortBy] = useState(sortBy)
+  const [localSortOrder, setLocalSortOrder] = useState(sortOrder)
+
+  useEffect(() => {
+    setLocalSearch(searchParams.get("search") || "")
+    setLocalMinPrice(searchParams.get("minPrice") || "")
+    setLocalMaxPrice(searchParams.get("maxPrice") || "")
+    setLocalSortBy(searchParams.get("sortBy") || "createdAt")
+    setLocalSortOrder(searchParams.get("sortOrder") || "desc")
+  }, [searchParams])
+
   const [products, setProducts] = useState<Product[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
+  const [page, setPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [error, setError] = useState("")
+  const [stats, setStats] = useState({
+    totalProducts: 0,
+    totalStockValue: 0,
+    lowStockCount: 0,
+    outOfStockCount: 0,
+  })
 
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [refreshKey, setRefreshKey] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
 
-  const page = parseInt(searchParams.get("page") || "1", 10)
-  const search = searchParams.get("search") || ""
+  // Sync state with search params: reset page & products when parameters change
+  const currentParamsString = searchParams.toString()
+  const [prevParamsString, setPrevParamsString] = useState(currentParamsString)
+  if (currentParamsString !== prevParamsString) {
+    setPrevParamsString(currentParamsString)
+    setProducts([])
+    setPage(1)
+    setHasNextPage(false)
+  }
 
   useEffect(() => {
     let cancelled = false
 
     async function fetchProducts() {
-      setLoading(true)
+      if (page === 1) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
       setError("")
       try {
         const params = new URLSearchParams()
         params.set("page", page.toString())
         params.set("limit", "10")
         if (search) params.set("search", search)
+        if (minPrice !== null) params.set("minPrice", minPrice.toString())
+        if (maxPrice !== null) params.set("maxPrice", maxPrice.toString())
+        params.set("sortBy", sortBy)
+        params.set("sortOrder", sortOrder)
 
         const res = await fetch(`/api/products?${params.toString()}`, {
           credentials: "include",
@@ -99,12 +131,22 @@ function ProductsContent() {
 
         if (!res.ok || !data.success) {
           setError(data.message || "Failed to fetch products")
-          setLoading(false)
           return
         }
 
-        setProducts(data.data || [])
-        setPagination(data.pagination || null)
+        if (page === 1) {
+          setProducts(data.data || [])
+        } else {
+          setProducts((prev) => [...prev, ...(data.data || [])])
+        }
+
+        if (data.stats) {
+          setStats(data.stats)
+        }
+
+        if (data.pagination) {
+          setHasNextPage(data.pagination.hasNextPage)
+        }
       } catch {
         if (!cancelled) {
           setError("Network error. Please try again.")
@@ -112,6 +154,7 @@ function ProductsContent() {
       } finally {
         if (!cancelled) {
           setLoading(false)
+          setLoadingMore(false)
         }
       }
     }
@@ -121,21 +164,79 @@ function ProductsContent() {
     return () => {
       cancelled = true
     }
-  }, [page, search, router])
+  }, [page, search, minPrice, maxPrice, sortBy, sortOrder, router, refreshKey])
 
-  function navigate(pageNum: number, searchTerm?: string) {
-    const params = new URLSearchParams()
-    params.set("page", pageNum.toString())
-    const q = searchTerm !== undefined ? searchTerm : search
-    if (q) params.set("search", q)
-    router.push(`/admin/products?${params.toString()}`);
-  }
+  const [observerRef, setObserverRef] = useState<HTMLDivElement | null>(null)
 
-  function handleSearch(e: React.FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!observerRef || !hasNextPage || loading || loadingMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(observerRef)
+    return () => observer.disconnect()
+  }, [observerRef, hasNextPage, loading, loadingMore])
+
+  function handleFilterSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const q = formData.get("search") as string
-    navigate(1, q)
+    
+    // Start with current URL search params to preserve hidden filters
+    const params = new URLSearchParams(searchParams.toString())
+
+    const q = formData.get("search")
+    if (q !== null) {
+      const val = q.toString().trim()
+      if (val) params.set("search", val)
+      else params.delete("search")
+    }
+
+    const minP = formData.get("minPrice")
+    if (minP !== null) {
+      const val = minP.toString().trim()
+      if (val) params.set("minPrice", val)
+      else params.delete("minPrice")
+    }
+
+    const maxP = formData.get("maxPrice")
+    if (maxP !== null) {
+      const val = maxP.toString().trim()
+      if (val) params.set("maxPrice", val)
+      else params.delete("maxPrice")
+    }
+
+    const sortB = formData.get("sortBy")
+    if (sortB !== null) {
+      const val = sortB.toString().trim()
+      if (val && val !== "createdAt") params.set("sortBy", val)
+      else params.delete("sortBy")
+    }
+
+    const sortO = formData.get("sortOrder")
+    if (sortO !== null) {
+      const val = sortO.toString().trim()
+      if (val && val !== "desc") params.set("sortOrder", val)
+      else params.delete("sortOrder")
+    }
+
+    const queryString = params.toString()
+    router.push(queryString ? `/admin/products?${queryString}` : "/admin/products")
+  }
+
+  function handleResetFilters() {
+    setLocalSearch("")
+    setLocalMinPrice("")
+    setLocalMaxPrice("")
+    setLocalSortBy("createdAt")
+    setLocalSortOrder("desc")
+    router.push("/admin/products")
   }
 
   async function handleDeleteConfirm() {
@@ -157,13 +258,10 @@ function ProductsContent() {
 
       toast.success("Product deleted successfully")
       
-      // Refresh list
-      const updatedProducts = products.filter(p => p.id !== deleteId)
-      setProducts(updatedProducts)
-      
-      if (updatedProducts.length === 0 && page > 1) {
-        navigate(page - 1, search)
-      }
+      // Refresh list & stats
+      setProducts([])
+      setPage(1)
+      setRefreshKey(prev => prev + 1)
     } catch {
       toast.error("Network error. Please try again.")
     } finally {
@@ -171,12 +269,6 @@ function ProductsContent() {
       setDeleteId(null)
     }
   }
-
-  // Compute local stats for visual wow factor
-  const totalProductsCount = pagination?.total || products.length
-  const totalValue = products.reduce((acc, p) => acc + (p.price * p.stock), 0)
-  const lowStockCount = products.filter(p => p.stock > 0 && p.stock <= 10).length
-  const outOfStockCount = products.filter(p => p.stock === 0).length
 
   const columns: ColumnDef<Product>[] = [
     {
@@ -276,17 +368,17 @@ function ProductsContent() {
             <p className="text-xs font-medium text-slate-400">Total Products</p>
             <Package className="h-4 w-4 text-indigo-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{totalProductsCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{stats.totalProducts}</p>
           <span className="text-[10px] text-slate-500">Items registered in system</span>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-medium text-slate-400">Page Stock Value</p>
+            <p className="text-xs font-medium text-slate-400">Loaded Stock Value</p>
             <DollarSign className="h-4 w-4 text-emerald-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">Rp {totalValue.toLocaleString("id-ID")}</p>
-          <span className="text-[10px] text-slate-500">Valuation of current page stock</span>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">Rp {stats.totalStockValue.toLocaleString("id-ID")}</p>
+          <span className="text-[10px] text-slate-500">Valuation of all database stock</span>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
@@ -294,7 +386,7 @@ function ProductsContent() {
             <p className="text-xs font-medium text-slate-400">Low Stock Warning</p>
             <CircleAlert className="h-4 w-4 text-amber-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{lowStockCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{stats.lowStockCount}</p>
           <span className="text-[10px] text-slate-500">Stock levels between 1 and 10</span>
         </div>
 
@@ -303,29 +395,116 @@ function ProductsContent() {
             <p className="text-xs font-medium text-slate-400">Out of Stock</p>
             <Layers className="h-4 w-4 text-rose-400" />
           </div>
-          <p className="mt-2 text-2xl font-semibold text-slate-100">{outOfStockCount}</p>
+          <p className="mt-2 text-2xl font-semibold text-slate-100">{stats.outOfStockCount}</p>
           <span className="text-[10px] text-slate-500">Stock completely depleted</span>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+      {/* Search & Advanced Filters Form */}
+      <form onSubmit={handleFilterSubmit} className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[280px]">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-550" />
             <Input
               type="search"
               name="search"
-              placeholder="Search by product name..."
-              defaultValue={search}
-              className="pl-9 bg-slate-900/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+              placeholder="Search products by name..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="pl-10 h-10 bg-slate-900/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
             />
           </div>
-          <Button type="submit" variant="secondary" className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60">
+          <Button type="submit" className="h-10 px-5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-750 text-white font-semibold shadow-md shadow-indigo-600/10 transition-all duration-200 border-0">
             Search
           </Button>
-        </form>
-      </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              "h-10 border-slate-800 bg-transparent text-slate-400 hover:text-slate-255 hover:bg-slate-800 gap-2",
+              showFilters && "bg-slate-800/80 border-slate-700 text-indigo-400 hover:text-indigo-350"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {showFilters ? "Hide Filters" : "Filters"}
+          </Button>
+        </div>
+
+        {/* Collapsible Filters Panel */}
+        {showFilters && (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/10 p-5 shadow-xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 items-end">
+              {/* Min Price */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Min Price (Rp)</label>
+                <Input
+                  type="number"
+                  name="minPrice"
+                  placeholder="e.g. 10000"
+                  value={localMinPrice}
+                  onChange={(e) => setLocalMinPrice(e.target.value)}
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                />
+              </div>
+
+              {/* Max Price */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Max Price (Rp)</label>
+                <Input
+                  type="number"
+                  name="maxPrice"
+                  placeholder="e.g. 500000"
+                  value={localMaxPrice}
+                  onChange={(e) => setLocalMaxPrice(e.target.value)}
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                />
+              </div>
+
+              {/* Sort By */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Sort By</label>
+                <div className="flex gap-2">
+                  <select
+                    name="sortBy"
+                    value={localSortBy}
+                    onChange={(e) => setLocalSortBy(e.target.value)}
+                    className="flex-1 rounded-md border border-slate-800 bg-slate-950/40 h-10 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
+                  >
+                    <option className="bg-slate-900 text-slate-200" value="createdAt">Date Created</option>
+                    <option className="bg-slate-900 text-slate-200" value="name">Product Name</option>
+                    <option className="bg-slate-900 text-slate-200" value="price">Price</option>
+                    <option className="bg-slate-900 text-slate-200" value="stock">Stock Level</option>
+                  </select>
+                  <select
+                    name="sortOrder"
+                    value={localSortOrder}
+                    onChange={(e) => setLocalSortOrder(e.target.value)}
+                    className="w-20 rounded-md border border-slate-800 bg-slate-950/40 h-10 px-2 text-xs text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
+                  >
+                    <option className="bg-slate-900 text-slate-200" value="desc">Desc</option>
+                    <option className="bg-slate-900 text-slate-250" value="asc">Asc</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <Button 
+                  type="button" 
+                  onClick={handleResetFilters}
+                  variant="outline" 
+                  className="w-24 h-10 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                >
+                  Reset
+                </Button>
+                <Button type="submit" className="flex-1 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                  Apply Filters
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </form>
 
       {error && (
         <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-400">
@@ -355,16 +534,7 @@ function ProductsContent() {
             ))}
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={columns.length} className="h-48 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
-                    <span className="text-sm text-slate-500">Loading catalog...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -378,10 +548,21 @@ function ProductsContent() {
                   ))}
                 </TableRow>
               ))
-            ) : (
-              <TableRow>
+            ) : !loading ? (
+              <TableRow className="hover:bg-transparent border-0">
                 <TableCell colSpan={columns.length} className="h-48 text-center text-slate-500">
                   No products matched your search.
+                </TableCell>
+              </TableRow>
+            ) : null}
+
+            {loading && page === 1 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-48 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+                    <span className="text-sm text-slate-500">Loading catalog...</span>
+                  </div>
                 </TableCell>
               </TableRow>
             )}
@@ -389,32 +570,15 @@ function ProductsContent() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {!loading && pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(page - 1)}
-            disabled={page <= 1}
-            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          >
-            Previous
-          </Button>
-          <div className="text-xs text-slate-500 mx-2">
-            Page <span className="text-slate-300 font-semibold">{page}</span> of <span className="text-slate-300 font-semibold">{pagination.totalPages}</span>
+      {/* Infinite Scroll Loader Spacer */}
+      <div ref={setObserverRef} className="h-16 flex items-center justify-center">
+        {loadingMore && (
+          <div className="flex items-center gap-2 text-indigo-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-xs text-slate-500">Loading more products...</span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(page + 1)}
-            disabled={page >= pagination.totalPages}
-            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          >
-            Next
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={!!deleteId} onOpenChange={(open) => !open && setDeleteId(null)}>

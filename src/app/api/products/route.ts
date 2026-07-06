@@ -13,6 +13,10 @@ export async function GET(request: NextRequest) {
       page: searchParams.get("page") || undefined,
       limit: searchParams.get("limit") || undefined,
       search: searchParams.get("search") || undefined,
+      minPrice: searchParams.get("minPrice") || undefined,
+      maxPrice: searchParams.get("maxPrice") || undefined,
+      sortBy: searchParams.get("sortBy") || undefined,
+      sortOrder: searchParams.get("sortOrder") || undefined,
     };
 
     const validatedQuery = productQuerySchema.parse(query);
@@ -22,12 +26,14 @@ export async function GET(request: NextRequest) {
       success: true,
       data: result.items,
       message: "Products fetched successfully",
+      stats: result.stats,
       ...(result.total !== undefined && {
         pagination: {
           total: result.total,
           page: validatedQuery.page,
           limit: validatedQuery.limit,
           totalPages: Math.ceil(result.total / validatedQuery.limit),
+          hasNextPage: result.hasNextPage,
         }
       })
     }, 200);

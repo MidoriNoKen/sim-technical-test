@@ -2,7 +2,8 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
-import { MoreHorizontal, Plus, Search, Eye, Loader2, Package, DollarSign, ShoppingCart, Users } from "lucide-react"
+import { MoreHorizontal, Plus, Search, Eye, Loader2, Package, DollarSign, ShoppingCart, Users, SlidersHorizontal } from "lucide-react"
+import { cn } from "@/lib/utils"
 import {
   flexRender,
   getCoreRowModel,
@@ -52,36 +53,73 @@ interface Order {
   orderItems: OrderItem[]
 }
 
-interface Pagination {
-  total: number
-  page: number
-  limit: number
-  totalPages: number
-}
 
 function OrdersContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
 
-  const [orders, setOrders] = useState<Order[]>([])
-  const [pagination, setPagination] = useState<Pagination | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState("")
-
-  const page = parseInt(searchParams.get("page") || "1", 10)
   const search = searchParams.get("search") || ""
+  const status = searchParams.get("status") || ""
+  const minAmount = searchParams.get("minAmount") ? Number(searchParams.get("minAmount")) : null
+  const maxAmount = searchParams.get("maxAmount") ? Number(searchParams.get("maxAmount")) : null
+  const sortBy = searchParams.get("sortBy") || "createdAt"
+  const sortOrder = searchParams.get("sortOrder") || "desc"
+
+  const [localSearch, setLocalSearch] = useState(search)
+  const [localStatus, setLocalStatus] = useState(status)
+  const [localMinAmount, setLocalMinAmount] = useState(searchParams.get("minAmount") || "")
+  const [localMaxAmount, setLocalMaxAmount] = useState(searchParams.get("maxAmount") || "")
+  const [localSortBy, setLocalSortBy] = useState(sortBy)
+  const [localSortOrder, setLocalSortOrder] = useState(sortOrder)
+
+  useEffect(() => {
+    setLocalSearch(searchParams.get("search") || "")
+    setLocalStatus(searchParams.get("status") || "")
+    setLocalMinAmount(searchParams.get("minAmount") || "")
+    setLocalMaxAmount(searchParams.get("maxAmount") || "")
+    setLocalSortBy(searchParams.get("sortBy") || "createdAt")
+    setLocalSortOrder(searchParams.get("sortOrder") || "desc")
+  }, [searchParams])
+
+  const [orders, setOrders] = useState<Order[]>([])
+  const [page, setPage] = useState(1)
+  const [hasNextPage, setHasNextPage] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [error, setError] = useState("")
+  const [totalCount, setTotalCount] = useState(0)
+  const [showFilters, setShowFilters] = useState(false)
+
+  // Sync state with search params: reset page & orders when parameters change
+  const currentParamsString = searchParams.toString()
+  const [prevParamsString, setPrevParamsString] = useState(currentParamsString)
+  if (currentParamsString !== prevParamsString) {
+    setPrevParamsString(currentParamsString)
+    setOrders([])
+    setPage(1)
+    setHasNextPage(false)
+  }
 
   useEffect(() => {
     let cancelled = false
 
     async function fetchOrders() {
-      setLoading(true)
+      if (page === 1) {
+        setLoading(true)
+      } else {
+        setLoadingMore(true)
+      }
       setError("")
       try {
         const params = new URLSearchParams()
         params.set("page", page.toString())
         params.set("limit", "10")
         if (search) params.set("search", search)
+        if (status) params.set("status", status)
+        if (minAmount !== null) params.set("minAmount", minAmount.toString())
+        if (maxAmount !== null) params.set("maxAmount", maxAmount.toString())
+        params.set("sortBy", sortBy)
+        params.set("sortOrder", sortOrder)
 
         const res = await fetch(`/api/orders?${params.toString()}`, {
           credentials: "include",
@@ -100,12 +138,19 @@ function OrdersContent() {
 
         if (!res.ok || !data.success) {
           setError(data.message || "Failed to fetch orders")
-          setLoading(false)
           return
         }
 
-        setOrders(data.data || [])
-        setPagination(data.pagination || null)
+        if (page === 1) {
+          setOrders(data.data || [])
+        } else {
+          setOrders((prev) => [...prev, ...(data.data || [])])
+        }
+
+        if (data.pagination) {
+          setHasNextPage(data.pagination.hasNextPage)
+          setTotalCount(data.pagination.total)
+        }
       } catch {
         if (!cancelled) {
           setError("Network error. Please try again.")
@@ -113,6 +158,7 @@ function OrdersContent() {
       } finally {
         if (!cancelled) {
           setLoading(false)
+          setLoadingMore(false)
         }
       }
     }
@@ -122,25 +168,91 @@ function OrdersContent() {
     return () => {
       cancelled = true
     }
-  }, [page, search, router])
+  }, [page, search, status, minAmount, maxAmount, sortBy, sortOrder, router])
 
-  function navigate(pageNum: number, searchTerm?: string) {
-    const params = new URLSearchParams()
-    params.set("page", pageNum.toString())
-    const q = searchTerm !== undefined ? searchTerm : search
-    if (q) params.set("search", q)
-    router.push(`/admin/orders?${params.toString()}`)
-  }
+  const [observerRef, setObserverRef] = useState<HTMLDivElement | null>(null)
 
-  function handleSearch(e: React.FormEvent<HTMLFormElement>) {
+  useEffect(() => {
+    if (!observerRef || !hasNextPage || loading || loadingMore) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setPage((prev) => prev + 1)
+        }
+      },
+      { threshold: 0.1 }
+    )
+
+    observer.observe(observerRef)
+    return () => observer.disconnect()
+  }, [observerRef, hasNextPage, loading, loadingMore])
+
+  function handleFilterSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     const formData = new FormData(e.currentTarget)
-    const q = formData.get("search") as string
-    navigate(1, q)
+    
+    // Start with current URL search params to preserve hidden filters
+    const params = new URLSearchParams(searchParams.toString())
+
+    const q = formData.get("search")
+    if (q !== null) {
+      const val = q.toString().trim()
+      if (val) params.set("search", val)
+      else params.delete("search")
+    }
+
+    const stat = formData.get("status")
+    if (stat !== null) {
+      const val = stat.toString().trim()
+      if (val) params.set("status", val)
+      else params.delete("status")
+    }
+
+    const minA = formData.get("minAmount")
+    if (minA !== null) {
+      const val = minA.toString().trim()
+      if (val) params.set("minAmount", val)
+      else params.delete("minAmount")
+    }
+
+    const maxA = formData.get("maxAmount")
+    if (maxA !== null) {
+      const val = maxA.toString().trim()
+      if (val) params.set("maxAmount", val)
+      else params.delete("maxAmount")
+    }
+
+    const sortB = formData.get("sortBy")
+    if (sortB !== null) {
+      const val = sortB.toString().trim()
+      if (val && val !== "createdAt") params.set("sortBy", val)
+      else params.delete("sortBy")
+    }
+
+    const sortO = formData.get("sortOrder")
+    if (sortO !== null) {
+      const val = sortO.toString().trim()
+      if (val && val !== "desc") params.set("sortOrder", val)
+      else params.delete("sortOrder")
+    }
+
+    const queryString = params.toString()
+    router.push(queryString ? `/admin/orders?${queryString}` : "/admin/orders")
+  }
+
+  function handleResetFilters() {
+    setLocalSearch("")
+    setLocalStatus("")
+    setLocalMinAmount("")
+    setLocalMaxAmount("")
+    setLocalSortBy("createdAt")
+    setLocalSortOrder("desc")
+    router.push("/admin/orders")
   }
 
   // Compute local stats
-  const totalOrdersCount = pagination?.total || orders.length
+  const totalOrdersCount = totalCount || orders.length
   const totalRevenue = orders.reduce((acc, o) => acc + o.totalAmount, 0)
   const totalItemsSold = orders.reduce(
     (acc, o) => acc + o.orderItems.reduce((sum, item) => sum + item.quantity, 0),
@@ -307,7 +419,7 @@ function OrdersContent() {
           <p className="mt-2 text-2xl font-semibold text-slate-100">
             Rp {totalRevenue.toLocaleString("id-ID")}
           </p>
-          <span className="text-[10px] text-slate-500">Value of current page orders</span>
+          <span className="text-[10px] text-slate-500">Value of loaded orders</span>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
@@ -316,7 +428,7 @@ function OrdersContent() {
             <Package className="h-4 w-4 text-amber-400" />
           </div>
           <p className="mt-2 text-2xl font-semibold text-slate-100">{totalItemsSold}</p>
-          <span className="text-[10px] text-slate-500">Units on current page</span>
+          <span className="text-[10px] text-slate-500">Units loaded</span>
         </div>
 
         <div className="rounded-xl border border-slate-800 bg-slate-900/20 p-5 backdrop-blur-md">
@@ -325,28 +437,131 @@ function OrdersContent() {
             <Users className="h-4 w-4 text-cyan-400" />
           </div>
           <p className="mt-2 text-2xl font-semibold text-slate-100">{uniqueCustomers}</p>
-          <span className="text-[10px] text-slate-500">Unique on current page</span>
+          <span className="text-[10px] text-slate-500">Unique on loaded pages</span>
         </div>
       </div>
 
-      {/* Toolbar */}
-      <div className="flex items-center justify-between">
-        <form onSubmit={handleSearch} className="flex w-full max-w-sm items-center space-x-2">
-          <div className="relative w-full">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-slate-500" />
+      {/* Search & Advanced Filters Form */}
+      <form onSubmit={handleFilterSubmit} className="space-y-4">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="relative flex-1 min-w-[280px]">
+            <Search className="absolute left-3 top-3 h-4 w-4 text-slate-550" />
             <Input
               type="search"
               name="search"
-              placeholder="Search by order ID or customer email..."
-              defaultValue={search}
-              className="pl-9 bg-slate-900/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
+              placeholder="Search orders by customer email..."
+              value={localSearch}
+              onChange={(e) => setLocalSearch(e.target.value)}
+              className="pl-10 h-10 bg-slate-900/40 border-slate-800 text-slate-200 placeholder:text-slate-500 focus-visible:ring-indigo-500"
             />
           </div>
-          <Button type="submit" variant="secondary" className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700/60">
+          <Button type="submit" className="h-10 px-5 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-750 text-white font-semibold shadow-md shadow-indigo-600/10 transition-all duration-200 border-0">
             Search
           </Button>
-        </form>
-      </div>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => setShowFilters(!showFilters)}
+            className={cn(
+              "h-10 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800 gap-2",
+              showFilters && "bg-slate-800/80 border-slate-700 text-indigo-400 hover:text-indigo-350"
+            )}
+          >
+            <SlidersHorizontal className="h-4 w-4" />
+            {showFilters ? "Hide Filters" : "Filters"}
+          </Button>
+        </div>
+
+        {/* Collapsible Filters Panel */}
+        {showFilters && (
+          <div className="rounded-xl border border-slate-800 bg-slate-900/10 p-5 shadow-xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200">
+            <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4 items-end">
+              {/* Status */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Status</label>
+                <select
+                  name="status"
+                  value={localStatus}
+                  onChange={(e) => setLocalStatus(e.target.value)}
+                  className="w-full rounded-md border border-slate-800 bg-slate-950/40 h-10 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
+                >
+                  <option className="bg-slate-900 text-slate-200" value="">All Statuses</option>
+                  <option className="bg-slate-900 text-slate-200" value="PENDING">PENDING</option>
+                  <option className="bg-slate-900 text-slate-200" value="VERIFIED">VERIFIED</option>
+                  <option className="bg-slate-900 text-slate-200" value="COMPLETED">COMPLETED</option>
+                  <option className="bg-slate-900 text-slate-200" value="CANCELLED">CANCELLED</option>
+                </select>
+              </div>
+              
+              {/* Min Amount */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Min Amount (Rp)</label>
+                <Input
+                  type="number"
+                  name="minAmount"
+                  placeholder="e.g. 50000"
+                  value={localMinAmount}
+                  onChange={(e) => setLocalMinAmount(e.target.value)}
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                />
+              </div>
+
+              {/* Max Amount */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Max Amount (Rp)</label>
+                <Input
+                  type="number"
+                  name="maxAmount"
+                  placeholder="e.g. 2000000"
+                  value={localMaxAmount}
+                  onChange={(e) => setLocalMaxAmount(e.target.value)}
+                  className="h-10 bg-slate-950/40 border-slate-800 text-slate-200 placeholder:text-slate-600 focus-visible:ring-indigo-500"
+                />
+              </div>
+
+              {/* Sort By */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-400">Sort By</label>
+                <div className="flex gap-2">
+                  <select
+                    name="sortBy"
+                    value={localSortBy}
+                    onChange={(e) => setLocalSortBy(e.target.value)}
+                    className="flex-1 rounded-md border border-slate-800 bg-slate-950/40 h-10 px-3 text-sm text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
+                  >
+                    <option className="bg-slate-900 text-slate-200" value="createdAt">Date Created</option>
+                    <option className="bg-slate-900 text-slate-200" value="totalAmount">Total Amount</option>
+                  </select>
+                  <select
+                    name="sortOrder"
+                    value={localSortOrder}
+                    onChange={(e) => setLocalSortOrder(e.target.value)}
+                    className="w-20 rounded-md border border-slate-800 bg-slate-950/40 h-10 px-2 text-xs text-slate-200 shadow-sm focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 hover:border-indigo-500/50 transition-colors"
+                  >
+                    <option className="bg-slate-900 text-slate-200" value="desc">Desc</option>
+                    <option className="bg-slate-900 text-slate-250" value="asc">Asc</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex gap-2 col-span-1 md:col-span-4 justify-end">
+                <Button 
+                  type="button" 
+                  onClick={handleResetFilters}
+                  variant="outline" 
+                  className="w-24 h-10 border-slate-800 bg-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800"
+                >
+                  Reset
+                </Button>
+                <Button type="submit" className="w-32 h-10 bg-indigo-600 hover:bg-indigo-700 text-white font-medium">
+                  Apply Filters
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </form>
 
       {error && (
         <div className="rounded-xl bg-rose-500/10 border border-rose-500/20 p-4 text-sm text-rose-400">
@@ -376,16 +591,7 @@ function OrdersContent() {
             ))}
           </TableHeader>
           <TableBody>
-            {loading ? (
-              <TableRow className="hover:bg-slate-800/10 transition-colors">
-                <TableCell colSpan={columns.length} className="h-48 text-center">
-                  <div className="flex flex-col items-center justify-center gap-2">
-                    <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
-                    <span className="text-sm text-slate-500">Loading orders...</span>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : table.getRowModel().rows?.length ? (
+            {table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -399,12 +605,23 @@ function OrdersContent() {
                   ))}
                 </TableRow>
               ))
-            ) : (
-              <TableRow className="hover:bg-slate-800/10 transition-colors">
+            ) : !loading ? (
+              <TableRow className="hover:bg-transparent border-0">
                 <TableCell colSpan={columns.length} className="h-48 text-center text-slate-500">
                   <div className="flex flex-col items-center gap-2">
                     <ShoppingCart className="h-8 w-8 text-slate-600" />
                     <span>No orders matched your search.</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : null}
+
+            {loading && page === 1 && (
+              <TableRow className="hover:bg-transparent">
+                <TableCell colSpan={columns.length} className="h-48 text-center">
+                  <div className="flex flex-col items-center justify-center gap-2">
+                    <Loader2 className="h-7 w-7 animate-spin text-indigo-500" />
+                    <span className="text-sm text-slate-500">Loading orders...</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -413,33 +630,15 @@ function OrdersContent() {
         </Table>
       </div>
 
-      {/* Pagination */}
-      {!loading && pagination && pagination.totalPages > 1 && (
-        <div className="flex items-center justify-end space-x-2 py-4">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(page - 1)}
-            disabled={page <= 1}
-            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          >
-            Previous
-          </Button>
-          <div className="text-xs text-slate-500 mx-2">
-            Page <span className="text-slate-300 font-semibold">{page}</span> of{" "}
-            <span className="text-slate-300 font-semibold">{pagination.totalPages}</span>
+      {/* Infinite Scroll Loader Spacer */}
+      <div ref={setObserverRef} className="h-16 flex items-center justify-center">
+        {loadingMore && (
+          <div className="flex items-center gap-2 text-indigo-500">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            <span className="text-xs text-slate-500">Loading more orders...</span>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => navigate(page + 1)}
-            disabled={page >= pagination.totalPages}
-            className="border-slate-850 bg-slate-900/30 text-slate-300 hover:bg-slate-800 disabled:opacity-30"
-          >
-            Next
-          </Button>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

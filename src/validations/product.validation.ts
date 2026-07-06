@@ -32,4 +32,16 @@ export const productQuerySchema = z.object({
   page: z.preprocess((val) => Number(val || 1), z.number().int().min(1)).default(1),
   limit: z.preprocess((val) => Number(val || 10), z.number().int().min(1).max(100)).default(10),
   search: z.string().optional().nullable(),
+  minPrice: z.preprocess((val) => {
+    if (val === undefined || val === null || val === "") return undefined;
+    const num = Number(val);
+    return isNaN(num) ? undefined : num;
+  }, z.number().nonnegative().optional()),
+  maxPrice: z.preprocess((val) => {
+    if (val === undefined || val === null || val === "") return undefined;
+    const num = Number(val);
+    return isNaN(num) ? undefined : num;
+  }, z.number().nonnegative().optional()),
+  sortBy: z.enum(["price", "createdAt", "stock", "name"]).optional().default("createdAt"),
+  sortOrder: z.enum(["asc", "desc"]).optional().default("desc"),
 });

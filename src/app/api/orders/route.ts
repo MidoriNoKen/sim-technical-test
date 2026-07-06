@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { createOrderSchema } from "@/validations/order.validation";
+import { createOrderSchema, orderQuerySchema } from "@/validations/order.validation";
 import * as orderService from "@/services/order.service";
 import { AppError, sendResponse } from "@/utils/response";
 import { z } from "zod";
@@ -92,11 +92,19 @@ export async function GET(request: NextRequest) {
     // Admin can see all orders with pagination
     if (userRole === "ADMIN") {
       const { searchParams } = new URL(request.url);
-      const page = parseInt(searchParams.get("page") || "1", 10);
-      const limit = parseInt(searchParams.get("limit") || "10", 10);
-      const search = searchParams.get("search") || undefined;
+      const query = {
+        page: searchParams.get("page") || undefined,
+        limit: searchParams.get("limit") || undefined,
+        search: searchParams.get("search") || undefined,
+        status: searchParams.get("status") || undefined,
+        minAmount: searchParams.get("minAmount") || undefined,
+        maxAmount: searchParams.get("maxAmount") || undefined,
+        sortBy: searchParams.get("sortBy") || undefined,
+        sortOrder: searchParams.get("sortOrder") || undefined,
+      };
 
-      const result = await orderService.getAllOrders({ page, limit, search });
+      const validatedQuery = orderQuerySchema.parse(query);
+      const result = await orderService.getAllOrders(validatedQuery);
 
       return sendResponse(
         {
@@ -123,6 +131,17 @@ export async function GET(request: NextRequest) {
       200
     );
   } catch (error) {
+    if (error instanceof z.ZodError) {
+      return sendResponse(
+        {
+          success: false,
+          error: error.issues,
+          message: "Validation failed",
+        },
+        400
+      );
+    }
+
     if (error instanceof AppError) {
       return sendResponse(
         {
