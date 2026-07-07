@@ -2,25 +2,25 @@ import { redis } from "@/lib/redis";
 
 // Rate limit configurations for different endpoint types
 export const RATE_LIMITS = {
-  // Public endpoints (login, etc.) - stricter limits
+  // Public API endpoints (e.g. login) - stricter limits to prevent brute force
   public: {
-    limit: 10,
+    limit: 15,
     windowSeconds: 60, // 1 minute
   },
-  // Authenticated API endpoints - moderate limits
-  authenticated: {
-    limit: 100,
-    windowSeconds: 900, // 15 minutes
+  // General API endpoints (GET requests) - moderate limits for data fetching
+  api: {
+    limit: 120,
+    windowSeconds: 60, // 1 minute
   },
-  // Admin endpoints - higher limits but still protected
-  admin: {
-    limit: 200,
-    windowSeconds: 900, // 15 minutes
+  // Frontend Page routes (HTML, Next.js prefetches) - high limits
+  page: {
+    limit: 500,
+    windowSeconds: 60, // 1 minute
   },
-  // Sensitive write operations (create order, etc.) - stricter
+  // Sensitive write operations (create order, update product) - stricter to prevent spam
   write: {
     limit: 30,
-    windowSeconds: 300, // 5 minutes
+    windowSeconds: 60, // 1 minute
   },
 } as const;
 
@@ -37,7 +37,7 @@ export type RateLimitType = keyof typeof RATE_LIMITS;
 
 export async function checkRateLimit(
   ip: string,
-  type: RateLimitType = "authenticated"
+  type: RateLimitType = "api"
 ): Promise<RateLimitResult> {
   const config = RATE_LIMITS[type];
   const key = `${PREFIX}${type}:${ip}`;

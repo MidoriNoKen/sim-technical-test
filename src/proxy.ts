@@ -52,8 +52,11 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const method = request.method;
 
-  // Extract client IP address from headers (x-forwarded-for set by reverse proxy)
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() || "127.0.0.1";
+  // Extract client IP address from headers (Traefik sets X-Real-Ip and X-Forwarded-For)
+  const ip = 
+    request.headers.get("x-real-ip") ||
+    request.headers.get("x-forwarded-for")?.split(",")[0].trim() || 
+    "127.0.0.1";
 
   // 1. Request body size limiting for write methods (bypass for multipart/form-data uploads)
   if (["POST", "PUT", "PATCH"].includes(method)) {
@@ -87,14 +90,18 @@ export async function proxy(request: NextRequest) {
   let rateLimitHeaders: Record<string, string> = {};
   try {
     // Determine rate limit type based on endpoint
-    let rateLimitType: "public" | "authenticated" | "admin" | "write" = "authenticated";
+    let rateLimitType: import("@/utils/rate-limiter").RateLimitType = "page";
 
-    if (pathname === "/api/auth/login") {
-      rateLimitType = "public";
-    } else if (isAdminRoute) {
-      rateLimitType = "admin";
-    } else if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
-      rateLimitType = "write";
+    if (pathname.startsWith("/api")) {
+      if (pathname === "/api/auth/login") {
+        rateLimitType = "public";
+      } else if (["POST", "PUT", "PATCH", "DELETE"].includes(method)) {
+        rateLimitType = "write";
+      } else {
+        rateLimitType = "api";
+      }
+    } else {
+      rateLimitType = "page";
     }
 
     const rateLimit = await checkRateLimit(ip, rateLimitType);
@@ -266,15 +273,9 @@ export async function proxy(request: NextRequest) {
   return response;
 }
 
-// Match API routes, admin routes, and customer page routes
+// Match all request paths except for static assets and images
 export const config = {
   matcher: [
-    "/",
-    "/cart",
-    "/orders",
-    "/products/:path*",
-    "/login",
-    "/api/:path*",
-    "/admin/:path*",
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
   ],
 };
