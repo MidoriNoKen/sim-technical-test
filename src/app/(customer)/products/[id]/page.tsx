@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Loader2, Package, Plus, Minus, Search } from "lucide-react";
+import { ArrowLeft, Loader2, Package, Plus, Minus, Search, Image as ImageIcon } from "lucide-react";
 import { toast } from "sonner";
 import { Product } from "@prisma/client";
 
@@ -17,6 +17,8 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [activeImageIdx, setActiveImageIdx] = useState(0);
+  const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     async function fetchProduct() {
@@ -79,30 +81,67 @@ export default function ProductDetailPage() {
       </Button>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12 bg-slate-900/40 border border-slate-800 p-6 md:p-10 rounded-3xl backdrop-blur-sm shadow-2xl">
-        {/* Product Image */}
-        <div className="aspect-square bg-slate-950 rounded-2xl relative overflow-hidden border border-slate-800/50 shadow-inner">
-          {product.images?.[0] ? (
-            <img 
-              src={product.images[0]} 
-              alt={product.name} 
-              className="object-cover w-full h-full hover:scale-105 transition-transform duration-700" 
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 text-slate-700">
-              <Search className="h-16 w-16 opacity-20 mb-4" />
-              <p className="text-sm font-medium">No image available</p>
-            </div>
-          )}
+        {/* Product Image Gallery */}
+        <div className="flex flex-col gap-4">
+          <div className="aspect-square bg-slate-950 rounded-2xl relative overflow-hidden border border-slate-800/50 shadow-inner flex items-center justify-center">
+            {product.images && product.images.length > 0 ? (
+              imageErrors[product.images[activeImageIdx]] ? (
+                <div className="flex flex-col items-center justify-center text-slate-500">
+                  <ImageIcon className="h-12 w-12 mb-2 stroke-[1.5] opacity-60" />
+                  <span className="text-sm text-slate-650">Image not available</span>
+                </div>
+              ) : (
+                <img 
+                  src={product.images[activeImageIdx]} 
+                  alt={product.name} 
+                  className="object-contain w-full h-full" 
+                  onError={() => setImageErrors(prev => ({ ...prev, [product.images![activeImageIdx]]: true }))}
+                />
+              )
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950 text-slate-700">
+                <Search className="h-16 w-16 opacity-20 mb-4" />
+                <p className="text-sm font-medium">No image available</p>
+              </div>
+            )}
+            
+            {product.stock <= 5 && product.stock > 0 && (
+              <span className="absolute top-4 right-4 bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg z-10">
+                Low Stock
+              </span>
+            )}
+            {product.stock === 0 && (
+              <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg z-10">
+                Out of Stock
+              </span>
+            )}
+          </div>
           
-          {product.stock <= 5 && product.stock > 0 && (
-            <span className="absolute top-4 right-4 bg-orange-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-              Low Stock
-            </span>
-          )}
-          {product.stock === 0 && (
-            <span className="absolute top-4 right-4 bg-red-500 text-white text-xs font-bold px-3 py-1.5 rounded-full shadow-lg">
-              Out of Stock
-            </span>
+          {product.images && product.images.length > 1 && (
+            <div className="grid grid-cols-5 gap-2 mt-1">
+              {product.images.map((src, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveImageIdx(idx)}
+                  className={`aspect-square rounded-lg overflow-hidden border transition-all bg-slate-950 ${
+                    activeImageIdx === idx ? "border-indigo-500 ring-2 ring-indigo-500/30 scale-[1.02]" : "border-slate-800 opacity-60 hover:opacity-100"
+                  }`}
+                >
+                  {imageErrors[src] ? (
+                    <div className="h-full w-full flex items-center justify-center text-slate-600">
+                      <ImageIcon className="h-5 w-5 opacity-50" />
+                    </div>
+                  ) : (
+                    <img
+                      src={src}
+                      alt={`Thumbnail ${idx + 1}`}
+                      className="h-full w-full object-contain"
+                      onError={() => setImageErrors(prev => ({ ...prev, [src]: true }))}
+                    />
+                  )}
+                </button>
+              ))}
+            </div>
           )}
         </div>
 
