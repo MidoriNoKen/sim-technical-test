@@ -36,7 +36,7 @@ REDIS_URL="redis://localhost:6379"
 JWT_SECRET="super_secret_solutech_key_2026"
 ```
 
-Proyek ini dirancang agar sangat fleksibel dan dapat dijalankan dengan dua cara berikut:
+Proyek ini dapat diakses melalui website berikut https://ecommerce.diata.my.id. Selain itu, proyek ini dirancang agar sangat fleksibel dan dapat dijalankan dengan dua cara berikut:
 
 ### Cara 1: Menjalankan via Docker (Direkomendasikan & Sangat Instan)
 Seluruh lingkungan sistem sudah terbungkus rapi (PostgreSQL, Redis, dan Next.js). Anda tidak perlu menginstall database secara manual.
@@ -92,25 +92,31 @@ Saya memecah kompleksitas proyek menggunakan **GitHub Issues** (Task Breakdown),
 6. Pengembangan UI Customer Storefront & Checkout Flow.
 
 Saya mengerjakan proyek ini dengan cara membuat *branch* terpisah (misal: `feat/product-management`) untuk masing-masing **Issue**. Setelah kode di dalam *branch* tersebut dites dan berfungsi, saya membuka *Pull Request* dan melakukan *merge* kode ke *branch* utama (`main`). 
-**Sejarah commit progresif** di *repository* ini adalah representasi dari runtutan proses berpikir analitis saya lapis demi lapis.
+**History commit progresif** di *repository* ini adalah representasi dari runtutan proses berpikir analitis saya setiap tahapan pengerjaan.
 
 ---
 
 ## ⚙️ Keputusan Teknis, Asumsi & Trade-Offs
 
-Kami memahami bahwa kesempurnaan dikalahkan oleh efisiensi, oleh karena itu ada beberapa keputusan (*trade-off*) yang diambil:
+Saya memahami bahwa kesempurnaan dikalahkan oleh efisiensi, oleh karena itu ada beberapa keputusan (*trade-off*) yang diambil:
 
 1. **Kenapa Membangun Full-Stack (Bukan Hanya Backend)?**
-   *Requirement* tes menyatakan bahwa frontend sifatnya opsional untuk Admin. Namun, saya memutuskan untuk membangun UI sepenuhnya (Admin Dashboard & Customer E-Commerce) menggunakan Next.js App Router agar tim penilai bisa langsung **mensimulasikan alur penggunaan E-commerce dengan mulus** tanpa harus meraba-raba melalui Postman (meski koleksi Postman tetap disediakan secara lengkap). Hal ini juga membuktikan fleksibilitas sistem yang dibangun.
+   *Requirement* tes menyatakan bahwa frontend sifatnya opsional untuk Admin. Namun, saya memutuskan untuk membangun UI sepenuhnya (Admin Dashboard & Customer E-Commerce) menggunakan Next.js App Router agar tim penilai bisa langsung **mensimulasikan alur penggunaan E-commerce dengan mulus** tanpa harus meraba-raba melalui Postman (meski koleksi Postman tetap disediakan secara lengkap menggunakan Collection Postman maupun Swagger di `/api-docs`). Hal ini juga membuktikan fleksibilitas sistem yang dibangun.
 2. **Interactive Transaction pada Order (`prisma.$transaction`):**
    Ini adalah inti logika bisnis (kebenaran *stok* & *transaction*). Saat pembuatan order, pengecekan ketersediaan stok, kalkulasi total harga, dan pemotongan inventaris, **seluruhnya dibungkus dalam transaksi database di dalam database**. Apabila pada detik yang sama stok tiba-tiba kurang (*concurrency/race condition*), transaksi otomatis melakukan *rollback* total. Ini menjamin keamanan fatal pada E-commerce.
 3. **Konsep Soft Delete Produk:**
-   Produk tidak pernah dihapus permanen. Endpoint `DELETE` hanya mengisi timestamp pada kolom `deletedAt`. Tujuannya agar histori pembelian (Order Items) yang merujuk pada produk tersebut tidak menjadi yatim piatu / *error*. Endpoint *read* secara otomatis memfilter *record* ini, namun database admin tetap utuh.
+   Produk tidak pernah dihapus permanen. Endpoint `DELETE` hanya mengisi timestamp pada kolom `deletedAt`. Tujuannya agar histori pembelian (Order Items) yang merujuk pada produk tersebut tidak menjadi kosong / *error*. Endpoint *read* secara otomatis memfilter *record* ini, namun database admin tetap utuh.
 4. **Keamanan Autentikasi JWT Fleksibel:**
-   Respons API memberikan JWT dalam bentuk **HTTP-only cookie** untuk keamanan frontend anti-XSS yang terproteksi Next.js Middleware. Namun, rute API juga mendengarkan via **Authorization Bearer Token**, agar penguji dapat dengan mudah mengetes API *protected* melalui Postman.
+   Respons API memberikan JWT dalam bentuk **HTTP-only cookie** untuk keamanan frontend anti-XSS yang terproteksi Next.js Middleware. Namun, rute API juga dilakukan via **Authorization Bearer Token**, agar penguji dapat dengan mudah mengetes API *protected* melalui Postman.
 5. **Jalan Pintas Keterbatasan Waktu (*Trade-offs*):**
    - Proses invalidasi *cache* Redis masih menggunakan pola `SCAN` lalu `DEL` untuk menghapus semua keys `products:*` setiap kali terjadi aksi *write* (seperti order berhasil). Dalam skala masif jutaan key, operasi `SCAN` mungkin memberi sedikit *overhead*. Karena skala ini dibuat ringkas, jalan ini diambil untuk efisiensi *development* yang stabil.
    - Manajemen keranjang (*Shopping Cart*) pada UI dikelola via *React State/Context* di sisi lokal *(client-side)* sebelum ditembak menjadi Order. Di e-commerce raksasa, cart biasanya disimpan ke *persistent state* seperti Redis agar konsisten lintas-*device*. Saya melewatkannya karena di luar porsi tes.
+  
+---
+
+## 🤖 Pemanfaatan AI
+
+Pengerjaan yang dilakukan pada proyek ini memanfaatkan AI (Gemini) untuk membantu proses berpikir dan penyelesaian tugas repetitif secepat mungkin. Saya memiliki alur kerja seoarang Project Manager, Backend Developer, Frontend Developer, DevOps, dan QA Tester, tetapi proses pengerjaan ideal tiap posisi memerlukan waktu yang cukup banyak sehingga saya memerlukan bantuan AI untuk mempercepat pengerjaan dengan pengawasan sedetail mungkin. Menurut saya, era saat ini dan beberapa dekade berikutnya, AI akan dimanfaatkan sepenuhnya dalam membantu developer menyelesaikan pembangunan aplikasi secepat mungkin. Berdasarkan pengalaman saya, ini sangat dibutuhkan oleh start-up teknologi untuk mengejar ketertinggalan layanan bisnisnya sesingkat mungkin untuk mendapatkan benefit sebaik mungkin. Meskipun begitu, pemanfaatan AI perlu diperhatikan lebih lanjut, terutama dalam sisi detail dan keamanan.
 
 ---
 
@@ -135,7 +141,7 @@ Kami memahami bahwa kesempurnaan dikalahkan oleh efisiensi, oleh karena itu ada 
 ---
 
 ## ⏱️ Estimasi Waktu Pengerjaan
-Pengerjaan keseluruhan modul, infrastruktur docker, arsitektur REST, *caching*, desain UI Frontend penuh, dan pengujian memakan estimasi waktu kumulatif sekitar **15 - 20 Jam kerja**.
+Pengerjaan keseluruhan modul, infrastruktur docker, arsitektur REST, *caching*, desain UI Frontend penuh, dan pengujian memakan estimasi waktu kumulatif sekitar **16 - 20 Jam kerja**.
 
 ---
 *Dibuat & Dikembangkan untuk Solutech Technical Test.*
