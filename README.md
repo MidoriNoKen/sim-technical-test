@@ -1,101 +1,141 @@
-# E-Commerce Platform - Next.js (App Router), Prisma, PostgreSQL & Redis
+# Solutech E-Commerce Platform - Next.js, Prisma, PostgreSQL & Redis
 
-A production-ready, fully containerized e-commerce application featuring a REST API, an Admin Dashboard, and a Customer Storefront, built with Next.js (App Router, Standalone Build), Prisma, PostgreSQL, and Redis caching.
+Sebuah platform e-commerce *production-ready* yang mencakup REST API, Admin Dashboard, dan Customer Storefront. Proyek ini dibangun menggunakan Next.js (App Router), Prisma ORM, PostgreSQL, dan Redis *caching* untuk memenuhi persyaratan **Solutech Technical Test (Backend Developer)**.
 
 ---
 
-## 🚀 Quick Start (Local Setup)
+## 📖 Penjelasan Singkat
+Proyek ini mengadopsi arsitektur Full-Stack terpadu di mana frontend dan backend berada di dalam satu aplikasi Next.js:
+- **Backend (REST API):** Dibangun dengan prinsip RESTful, menggunakan validasi ketat (Zod), keamanan autentikasi JWT (HTTP-only cookies & Bearer token fallback), manipulasi transaksi order secara aman dengan *Prisma Interactive Transaction*, dan integrasi *cache* via Redis.
+- **Frontend (UI):** Menggunakan Tailwind CSS dan `shadcn/ui` untuk membangun antarmuka modern. Memiliki dua sisi: Admin Dashboard untuk manajemen data, dan Customer Storefront untuk pengalaman berbelanja.
 
-The entire application ecosystem—including the Next.js app, PostgreSQL database, and Redis cache—is fully containerized. To run the project in a single command, execute the following from the root directory:
+---
 
-```bash
-docker compose up --build
+## 📂 Struktur Proyek & Rute
+Struktur *repository* ini dirancang menggunakan *Layered Architecture* yang sangat jelas dan terpisah:
+- `database/schema.sql` : Berisi skema *raw SQL* perintah pembuatan seluruh tabel (memenuhi requirement pembuatan table secara manual).
+- `prisma/` : Konfigurasi model ORM dan skrip data awal (Seeder di `seed.js`).
+- `src/app/api/` : **Route Handlers** (Controller API). Seluruh endpoint REST API diakses melalui path `/api/...` dan mengembalikan standar JSON.
+- `src/app/(customer)/` : **Frontend Customer Storefront**. Merupakan halaman publik / pembeli yang diakses pada rute root `/`.
+- `src/app/admin/` : **Frontend Admin Dashboard**. Merupakan halaman manajemen yang diakses pada rute `/admin`.
+- `src/services/` : **Service Layer** menangani seluruh *business logic*, validasi kondisi stok, dan mekanisme Redis *caching*.
+- `src/repositories/` : **Repository Layer** menyediakan abstraksi fungsi CRUD langsung ke database via Prisma Client.
+- `src/validations/` : Terpusatnya berbagai skema **Zod** untuk memvalidasi *request body* dan *query parameters* dari API.
+
+---
+
+## 🚀 Cara Setup dan Menjalankan Proyek
+
+Sebelum mulai, Anda perlu menyalin konfigurasi environment. Duplikat file `.env.example` lalu ubah namanya menjadi `.env`.
+Isi dasar dari `.env` mencakup kredensial database, Redis, dan JWT:
+```env
+PORT=3000
+NODE_ENV=development
+DATABASE_URL="postgresql://solutech_user:solutech_password@localhost:5432/solutech_db?schema=public"
+REDIS_URL="redis://localhost:6379"
+JWT_SECRET="super_secret_solutech_key_2026"
 ```
 
-### ⚙️ What the Container Entrypoint Handles Automatically:
-1. **Health Check**: The `next_app` container waits for the `postgres_db` service to be completely ready and healthy.
-2. **Database Initialization**: It executes the raw PostgreSQL commands in `database/schema.sql` to construct the tables manually (satisfying the manual SQL requirement).
-3. **Prisma Generation**: It runs `prisma generate` to compile and synchronize the Prisma Client types.
-4. **Data Seeding**: It triggers the seeder script `npx prisma db seed` to automatically seed:
-   - Exactly **1 Admin User** (credentials: `admin@solutech.id` / `password123`).
-   - Exactly **1 Customer User** (credentials: `customer@solutech.id` / `password123`).
-   - At least **200 Products** with realistic names, descriptions, price values, and inventory stocks.
-5. **Start Production Server**: Automatically boots the Next.js production standalone server on port `3000`.
+Proyek ini dirancang agar sangat fleksibel dan dapat dijalankan dengan dua cara berikut:
+
+### Cara 1: Menjalankan via Docker (Direkomendasikan & Sangat Instan)
+Seluruh lingkungan sistem sudah terbungkus rapi (PostgreSQL, Redis, dan Next.js). Anda tidak perlu menginstall database secara manual.
+Dari dalam *root folder* proyek, cukup jalankan:
+```bash
+docker compose up -d --build
+```
+**Apa yang terjadi di balik layar (Entrypoint Otomatis)?**
+1. Docker akan menunggu hingga *container* PostgreSQL siap.
+2. Otomatis mengeksekusi `database/schema.sql` untuk membuat tabel database.
+3. Otomatis menjalankan `npx prisma generate` untuk *type safety*.
+4. Otomatis memanggil *seeder* (`npx prisma db seed`) yang menghasilkan:
+   - 1 Akun Admin (`admin@solutech.id` / `password123`).
+   - 1 Akun Customer (`customer@solutech.id` / `password123`).
+   - 200 Produk dummy siap pakai (dengan harga Rupiah dan stok acak).
+5. Next.js production mode (standalone) menyala di `http://localhost:3000`.
+
+### Cara 2: Menjalankan secara Lokal (Tanpa Docker)
+Jika ingin menjalankan dari PC lokal, pastikan **Node.js (v20+)**, **PostgreSQL**, dan **Redis Server** telah ter-install dan menyala.
+1. Sesuaikan variabel `DATABASE_URL` dan `REDIS_URL` di file `.env` ke kredensial PostgreSQL/Redis lokal Anda.
+2. Install seluruh dependensi proyek:
+   ```bash
+   npm install
+   ```
+3. Buat seluruh tabel secara manual ke dalam PostgreSQL menggunakan skrip SQL yang disediakan. Contoh menggunakan CLI `psql`:
+   ```bash
+   psql -U username_postgres -d nama_database_anda -f database/schema.sql
+   ```
+4. Generate Prisma Client agar sinkron dengan database:
+   ```bash
+   npx prisma generate
+   ```
+5. Masukkan data *seeding* (user dan 200 produk):
+   ```bash
+   npx prisma db seed
+   ```
+6. Jalankan proyek melalui *Development Server*:
+   ```bash
+   npm run dev
+   ```
+   Aplikasi dan API dapat diakses di `http://localhost:3000`.
 
 ---
 
-## 🛠️ Technology Stack
+## 📝 Proses Pengerjaan via GitHub Issues
+Proses penyelesaian technical test ini dirancang sedemikian rupa untuk meniru lingkungan kolaborasi *software engineering* dunia nyata.
+Saya memecah kompleksitas proyek menggunakan **GitHub Issues** (Task Breakdown), seperti:
+1. Setup infrastruktur, Docker, dan CI.
+2. Perancangan skema Database (SQL & Prisma).
+3. Pembuatan API Layer (Service & Repository).
+4. Integrasi Redis Caching dan Soft Deletes.
+5. Pengembangan UI untuk Admin Dashboard.
+6. Pengembangan UI Customer Storefront & Checkout Flow.
 
-* **Core**: Next.js 16 (App Router, Standalone Mode) & Node.js 20
-* **Database**: PostgreSQL 16
-* **ORM**: Prisma (using strict type safety)
-* **Cache**: Redis (via `ioredis` client)
-* **Authentication**: JWT (JSON Web Token) with HTTP-only cookies and Bearer token fallback support
-* **Validation**: Zod (for type-safe request parsing)
-* **Containerization**: Docker & Docker Compose (multi-stage optimized builder)
-
----
-
-## 📝 Environment Variables
-
-The project uses `.env.example` as a template for container and local environments:
-
-| Variable | Description | Default Value |
-| :--- | :--- | :--- |
-| `PORT` | Next.js server port inside the container | `3000` |
-| `NODE_ENV` | Mode of operation | `development` / `production` |
-| `DATABASE_URL` | PostgreSQL connection URL | `postgresql://solutech_user:solutech_password@postgres_db:5432/solutech_db?schema=public` |
-| `REDIS_URL` | Redis server connection string | `redis://redis_cache:6379` |
-| `JWT_SECRET` | Signing key for authenticating JSON Web Tokens | `super_secret_solutech_key_2026` |
+Saya mengerjakan proyek ini dengan cara membuat *branch* terpisah (misal: `feat/product-management`) untuk masing-masing **Issue**. Setelah kode di dalam *branch* tersebut dites dan berfungsi, saya membuka *Pull Request* dan melakukan *merge* kode ke *branch* utama (`main`). 
+**Sejarah commit progresif** di *repository* ini adalah representasi dari runtutan proses berpikir analitis saya lapis demi lapis.
 
 ---
 
-## 📐 Technical Decisions & Assumptions
+## ⚙️ Keputusan Teknis, Asumsi & Trade-Offs
 
-### 1. Unified Full-Stack Architecture
-We maintain a strict separation of concerns across files while unifying the frontend and backend in a single Next.js application:
-* **Frontend Storefront & Admin (`src/app/(customer)` & `src/app/admin`)**: Fully responsive UI built with Tailwind CSS and shadcn/ui. The root `/` path serves the Customer Storefront, while `/admin` serves the management dashboard.
-* **Route Handlers (`src/app/api/...`)**: Extract parameters, validate schemas via Zod, invoke Service operations, and return standardized JSON responses. All APIs are strictly scoped under the `/api` prefix.
-* **Service Layer (`src/services/...`)**: Handle business logic, orchestrate db calls, manage caching, and throw semantic exceptions.
-* **Repository Layer (`src/repositories/...`)**: Expose clean data-retrieval and mutation functions communicating with the database via Prisma.
+Kami memahami bahwa kesempurnaan dikalahkan oleh efisiensi, oleh karena itu ada beberapa keputusan (*trade-off*) yang diambil:
 
-### 2. Interactive Transactions & Concurrency Safety
-For order creation (`POST /api/orders`), the entire operation is wrapped in a strict **Prisma Interactive Transaction** (`prisma.$transaction`).
-* Stock details and pricing are fetched and computed server-side directly from the database context within the transaction to prevent manipulation of values.
-* Stock decrements are executed atomically in the database (`decrement: quantity`).
-* If the stock drops below zero for any of the products in the batch, the transaction is immediately rolled back and returns a `400 Bad Request`. This guarantees that no incomplete order placements or stock leaks occur during high-concurrency requests.
-
-### 3. Soft Delete Implementation
-Products are never hard deleted from the database. When an administrator calls `DELETE /api/products/[id]`, the handler updates the `deletedAt` column with the current timestamp. All product retrieval endpoints (`GET /api/products` and `GET /api/products/[id]`) explicitly filter out records where `deletedAt` is not null, keeping user-facing catalogs updated while retaining historic order item records intact.
-
-### 4. High-Performance Redis Caching & Invalidation
-* Caching is integrated within the `GET /api/products` listing endpoint. Cache keys incorporate pagination boundaries and search filters (e.g. `products:page:<p>:limit:<l>:search:<s>`) to store response segments.
-* To prevent stale catalogs, all write endpoints—including **product creation**, **updates**, **soft deletes**, and **successful order placements** (which modify inventory)—invalidate and scan-clear all matching Redis product cache keys.
+1. **Kenapa Membangun Full-Stack (Bukan Hanya Backend)?**
+   *Requirement* tes menyatakan bahwa frontend sifatnya opsional untuk Admin. Namun, saya memutuskan untuk membangun UI sepenuhnya (Admin Dashboard & Customer E-Commerce) menggunakan Next.js App Router agar tim penilai bisa langsung **mensimulasikan alur penggunaan E-commerce dengan mulus** tanpa harus meraba-raba melalui Postman (meski koleksi Postman tetap disediakan secara lengkap). Hal ini juga membuktikan fleksibilitas sistem yang dibangun.
+2. **Interactive Transaction pada Order (`prisma.$transaction`):**
+   Ini adalah inti logika bisnis (kebenaran *stok* & *transaction*). Saat pembuatan order, pengecekan ketersediaan stok, kalkulasi total harga, dan pemotongan inventaris, **seluruhnya dibungkus dalam transaksi database di dalam database**. Apabila pada detik yang sama stok tiba-tiba kurang (*concurrency/race condition*), transaksi otomatis melakukan *rollback* total. Ini menjamin keamanan fatal pada E-commerce.
+3. **Konsep Soft Delete Produk:**
+   Produk tidak pernah dihapus permanen. Endpoint `DELETE` hanya mengisi timestamp pada kolom `deletedAt`. Tujuannya agar histori pembelian (Order Items) yang merujuk pada produk tersebut tidak menjadi yatim piatu / *error*. Endpoint *read* secara otomatis memfilter *record* ini, namun database admin tetap utuh.
+4. **Keamanan Autentikasi JWT Fleksibel:**
+   Respons API memberikan JWT dalam bentuk **HTTP-only cookie** untuk keamanan frontend anti-XSS yang terproteksi Next.js Middleware. Namun, rute API juga mendengarkan via **Authorization Bearer Token**, agar penguji dapat dengan mudah mengetes API *protected* melalui Postman.
+5. **Jalan Pintas Keterbatasan Waktu (*Trade-offs*):**
+   - Proses invalidasi *cache* Redis masih menggunakan pola `SCAN` lalu `DEL` untuk menghapus semua keys `products:*` setiap kali terjadi aksi *write* (seperti order berhasil). Dalam skala masif jutaan key, operasi `SCAN` mungkin memberi sedikit *overhead*. Karena skala ini dibuat ringkas, jalan ini diambil untuk efisiensi *development* yang stabil.
+   - Manajemen keranjang (*Shopping Cart*) pada UI dikelola via *React State/Context* di sisi lokal *(client-side)* sebelum ditembak menjadi Order. Di e-commerce raksasa, cart biasanya disimpan ke *persistent state* seperti Redis agar konsisten lintas-*device*. Saya melewatkannya karena di luar porsi tes.
 
 ---
 
-## 📁 Postman Collection
+## ✅ Daftar Fitur Terlampir (Selesai/Belum)
 
-A pre-configured Postman Collection is available at the root:
-* **File**: `Solutech_Backend_Test.postman_collection.json`
-* **Folders**: Includes folders for `Auth`, `Products`, and `Orders` with pre-defined request payloads and headers.
-* **Auto-auth script**: The login request features a test script that automatically extracts the returned JWT token and stores it in the collection variable `{{token}}`. Subsequent protected requests automatically use this variable in their `Authorization` Bearer header.
+**Requirement Wajib (Wajib & Selesai):**
+- [x] Tech Stack Terpenuhi: Next.js + TS, PostgreSQL, Prisma, Layered Architecture.
+- [x] Input Validation (via Zod).
+- [x] Autentikasi JWT (Login) & Proteksi Rute (Role-Based Access).
+- [x] Product API (CRUD, Soft Delete, Pagination, Search Name).
+- [x] Order API (Submit Order List + Quantity, Transaksi Stok, List User Orders).
+- [x] Error Handling konsisten via kustom class `AppError`.
+- [x] Skrip SQL untuk *Create Table* & *Seeder* Data awal di `seed.js`.
+- [x] File `.env.example` dan *Postman Collection*.
 
----
-
-## ✅ Completed Deliverables Checklist
-
-- [x] **Zero-Config Docker Setup**: Runs Postgres, Redis, and Next.js out-of-the-box.
-- [x] **Raw SQL schema parity**: `database/schema.sql` verified matching schema state.
-- [x] **Seeders**: Scripts seed Admin user (`admin@solutech.id` / `password123`) and 5 core products.
-- [x] **Secure Authentication**: Hashed passwords (bcrypt) and protected routes using Next.js 16 `proxy` middleware with strict `ADMIN` and `CUSTOMER` role-based access control.
-- [x] **Full-Stack UI**: Integrated responsive Customer Storefront and Admin Dashboard using shadcn/ui and Tailwind CSS.
-- [x] **Product CRUD & Search**: Complete CRUD endpoints, pagination filters, and case-insensitive searching.
-- [x] **Order Placement Transactions**: Interactive transactions with concurrent inventory checks and rollbacks.
-- [x] **Redis Cache Invalidation**: Automatic scanning cache invalidation on write events.
-- [x] **100% Type Safe & Linter Passing**: Strict TypeScript implementation.
+**Requirement Nilai Tambah / Opsional (Semua Diselesaikan):**
+- [x] **Redis Caching**: Endpoint `GET /api/products` di-cache menggunakan Redis untuk respons super kilat.
+- [x] **Unit Testing**: Suite testing terpisah via *Vitest* (mencakup service product, order, auth).
+- [x] **Rate Limiting & Logging**: Terhindar dari *brute-force request*.
+- [x] **Frontend Sederhana (Over-delivered)**: Dashboard Admin komprehensif **serta** Frontend E-Commerce untuk Customer siap pakai berbalut *Tailwind CSS*.
 
 ---
 
-## ⏱️ Estimated Time Spent
-* **Total Time**: Approximately **12 hours** (planning, container orchestration setup, database modeling, route handler construction, Redis integration, and validation testing).
+## ⏱️ Estimasi Waktu Pengerjaan
+Pengerjaan keseluruhan modul, infrastruktur docker, arsitektur REST, *caching*, desain UI Frontend penuh, dan pengujian memakan estimasi waktu kumulatif sekitar **15 - 20 Jam kerja**.
+
+---
+*Dibuat & Dikembangkan untuk Solutech Technical Test.*
